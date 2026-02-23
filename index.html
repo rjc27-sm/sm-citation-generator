@@ -670,10 +670,11 @@
                     <button class="source-type-btn active" data-type="journal" role="radio" aria-checked="true" type="button">Journal article</button>
                     <button class="source-type-btn" data-type="book" role="radio" aria-checked="false" type="button">Book</button>
                     <button class="source-type-btn" data-type="chapter" role="radio" aria-checked="false" type="button">Book chapter</button>
-                    <button class="source-type-btn" data-type="website" role="radio" aria-checked="false" type="button">Website</button>
+                    <button class="source-type-btn" data-type="website" role="radio" aria-checked="false" type="button">Webpage</button>
                     <button class="source-type-btn" data-type="report" role="radio" aria-checked="false" type="button">Govt report</button>
                     <button class="source-type-btn" data-type="newspaper" role="radio" aria-checked="false" type="button">Newspaper</button>
                 </div>
+                <div id="url-notice" class="status" role="status" aria-live="polite"></div>
                 <div id="manual-form"></div>
                 <button class="btn btn-primary" id="generate-btn" type="button">Generate citation</button>
             </div>
@@ -718,6 +719,19 @@
     // Per-component author state, keyed by component ID
     const authorComponents = {};
 
+    // Persisted field values per source type (survives tab/type switches until page refresh)
+    const formState = {};
+
+    // Human-readable display names for source types
+    const TYPE_DISPLAY_NAMES = {
+        journal: 'journal article',
+        book: 'book',
+        chapter: 'book chapter',
+        website: 'webpage',
+        report: 'govt report',
+        newspaper: 'newspaper',
+    };
+
     // ===== SOURCE TYPE DEFINITIONS =====
 
     // Fields for each source type (author component is always added automatically)
@@ -725,48 +739,54 @@
         journal: [
             { id: 'title', label: 'Article title', required: true, sentenceCase: true },
             { id: 'journalName', label: 'Journal name', required: true },
-            { id: 'year', label: 'Year', half: true, placeholder: 'e.g.2024' },
+            { id: 'year', label: 'Year', half: true, placeholder: 'e.g. 2024' },
             { id: 'volume', label: 'Volume', half: true },
             { id: 'issue', label: 'Issue', half: true },
-            { id: 'pages', label: 'Pages', half: true, placeholder: 'e.g.172\u2013188' },
-            { id: 'doi', label: 'DOI', placeholder: 'e.g.10.1111/j.1460-2466.2008.01410.x' },
+            { id: 'pages', label: 'Pages', half: true, placeholder: 'e.g. 172\u2013188' },
+            { id: 'doi', label: 'DOI', placeholder: 'e.g. 10.1111/j.1460-2466.2008.01410.x' },
+            { id: 'url', label: 'URL (if no DOI)', helpText: 'URL automatically omitted if DOI provided' },
         ],
         book: [
             { id: 'title', label: 'Book title', required: true, sentenceCase: true },
-            { id: 'year', label: 'Year', half: true, placeholder: 'e.g.2013' },
-            { id: 'edition', label: 'Edition (if not first)', half: true, placeholder: 'e.g.2nd edn' },
+            { id: 'year', label: 'Year', half: true, placeholder: 'e.g. 2013' },
+            { id: 'edition', label: 'Edition (if not first)', half: true, placeholder: 'e.g. 2' },
             { id: 'publisher', label: 'Publisher' },
-            { id: 'place', label: 'Place of publication', placeholder: 'e.g.Canberra' },
-            { id: 'doi', label: 'DOI (if available)', placeholder: 'Omit place if DOI provided' },
+            { id: 'place', label: 'Place of publication', placeholder: 'e.g. Canberra', helpText: 'Place is automatically omitted if DOI provided' },
+            { id: 'doi', label: 'DOI (if available)' },
+            { id: 'url', label: 'URL (if no DOI)', helpText: 'URL automatically omitted if DOI provided' },
         ],
         chapter: [
             { id: 'chapterTitle', label: 'Chapter title', required: true, sentenceCase: true },
             { id: 'year', label: 'Year', half: true },
+            { id: 'edition', label: 'Edition (if not first)', half: true, placeholder: 'e.g. 2' },
             { id: '_editors', label: '__editors__' }, // Special marker: editor component goes here
             { id: 'bookTitle', label: 'Book title', required: true, sentenceCase: true },
             { id: 'publisher', label: 'Publisher' },
-            { id: 'place', label: 'Place of publication' },
+            { id: 'place', label: 'Place of publication', placeholder: 'e.g. Canberra', helpText: 'Place is automatically omitted if DOI provided' },
             { id: 'doi', label: 'DOI (if available)' },
+            { id: 'url', label: 'URL (if no DOI)', helpText: 'URL automatically omitted if DOI provided' },
         ],
         website: [
             { id: 'title', label: 'Page title', required: true, sentenceCase: true },
-            { id: 'websiteName', label: 'Website name', placeholder: 'e.g.Department of Health' },
+            { id: 'websiteName', label: 'Website name', placeholder: 'e.g. Department of Health' },
             { id: 'year', label: 'Year (or leave blank for n.d.)', half: true },
-            { id: 'accessDate', label: 'Access date', half: true, placeholder: 'e.g.20 January 2025' },
+            { id: 'accessDate', label: 'Access date', half: true, placeholder: 'e.g. 20 January 2025' },
             { id: 'url', label: 'URL' },
         ],
         report: [
             { id: 'title', label: 'Report title', required: true, sentenceCase: true },
             { id: 'year', label: 'Year', half: true },
-            { id: 'governmentName', label: 'Government name', half: true, placeholder: 'e.g.Australian Government' },
-            { id: 'accessDate', label: 'Access date', placeholder: 'e.g.3 February 2020' },
+            { id: 'governmentName', label: 'Government name', half: true, placeholder: 'e.g. Australian Government', defaultValue: 'Australian Government' },
+            { id: 'seriesName', label: 'Series name (optional)' },
+            { id: 'reportNumber', label: 'Report number (optional)', half: true },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 3 February 2020' },
             { id: 'url', label: 'URL' },
         ],
         newspaper: [
             { id: 'title', label: 'Article title', required: true, sentenceCase: true },
-            { id: 'publicationName', label: 'Publication name', required: true, placeholder: 'e.g.The Conversation' },
-            { id: 'fullDate', label: 'Full publication date', placeholder: 'e.g.24 May 2018' },
-            { id: 'accessDate', label: 'Access date', placeholder: 'e.g.29 January 2020' },
+            { id: 'publicationName', label: 'Publication name', required: true, placeholder: 'e.g. The Conversation' },
+            { id: 'fullDate', label: 'Full publication date', placeholder: 'e.g. 24 May 2018', helpText: 'Enter as D Month YYYY, or as D/M/YYYY — auto-converted on leaving field' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 29 January 2020' },
             { id: 'url', label: 'URL' },
         ],
     };
@@ -838,6 +858,25 @@
     function convertEnDash(str) {
         if (!str) return '';
         return str.replace(/(\d)\s*-\s*(\d)/g, '$1\u2013$2');
+    }
+
+    /**
+     * Format a page range: expand abbreviated end pages and convert hyphens to en dashes.
+     * CrossRef sometimes returns abbreviated ranges like "153-72" (meaning 153–172).
+     * This expands them back to the full form.
+     * e.g., "153-72" → "153–172", "234-56" → "234–256", "172-188" → "172–188"
+     */
+    function formatPageRange(str) {
+        if (!str) return '';
+        return str.replace(/(\d+)\s*[-\u2013]\s*(\d+)/g, (match, start, end) => {
+            // Expand abbreviated end page if shorter than start
+            if (end.length < start.length) {
+                end = start.slice(0, start.length - end.length) + end;
+            }
+            // Sanity check: end must be >= start after expansion
+            if (parseInt(end) < parseInt(start)) return `${start}\u2013${end}`;
+            return `${start}\u2013${end}`;
+        });
     }
 
     /**
@@ -925,6 +964,30 @@
     }
 
     /**
+     * Attempt to parse a date string in common Australian formats and reformat to "D Month YYYY".
+     * Handles: D/M/YY, D/M/YYYY, DD/MM/YY, DD/MM/YYYY (slash or hyphen separators).
+     * Returns the original string unchanged if the format is not recognised.
+     */
+    function autoFormatDate(value) {
+        if (!value) return value;
+        const trimmed = value.trim();
+        const m = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+        if (!m) return trimmed;
+
+        const months = ['January','February','March','April','May','June',
+                        'July','August','September','October','November','December'];
+        const day = parseInt(m[1], 10);
+        const month = parseInt(m[2], 10);
+        let year = parseInt(m[3], 10);
+
+        // Expand 2-digit year (00–49 → 2000s, 50–99 → 1900s)
+        if (year < 100) year += (year < 50 ? 2000 : 1900);
+
+        if (month < 1 || month > 12 || day < 1 || day > 31) return trimmed;
+        return `${day} ${months[month - 1]} ${year}`;
+    }
+
+    /**
      * Append "website" to a website name if not already present.
      */
     function formatWebsiteName(name) {
@@ -936,10 +999,10 @@
 
     /**
      * Build a hyperlinked title for the HTML citation when a URL or DOI is available.
-     * Returns the title wrapped in an <a> tag if linkable, otherwise unchanged.
+     * DOI takes priority over URL. Returns the title wrapped in an <a> tag if linkable.
      */
     function linkTitle(titleHtml, data) {
-        const href = data.url || (data.doi ? `https://doi.org/${cleanDOI(data.doi)}` : '');
+        const href = data.doi ? `https://doi.org/${cleanDOI(data.doi)}` : (data.url || '');
         if (!href) return titleHtml;
         return `<a href="${escAttr(href)}" target="_blank" rel="noopener">${titleHtml}</a>`;
     }
@@ -1206,25 +1269,85 @@
 
     /**
      * Parse a pasted author string into structured {given, family} objects.
-     * Supports: semicolons, "and", or newline delimiters.
-     * Each name can be "Given Family" or "Family, Given".
+     *
+     * Handles multiple input formats:
+     *   - "Given Family, Given Family, ..." (comma-separated, natural order — most databases)
+     *   - "Given Family & Given Family" (ampersand-separated)
+     *   - "Family, Given; Family, Given" (semicolon-separated, reversed order)
+     *   - "Given Family\nGiven Family\n..." (one name per line, e.g. from journal pages)
+     *
+     * Also strips: affiliation numbers, credential suffixes (MD, PhD, etc.),
+     * ORCID links, and other non-name noise.
      */
     function parseAuthorPaste(text) {
         if (!text || !text.trim()) return [];
-        // Split on semicolons, " and ", or newlines
-        const entries = text.split(/\s*[;\n]\s*|\s+and\s+/i).map(s => s.trim()).filter(Boolean);
+
+        // Step 1: Clean noise from the text
+        let cleaned = text
+            .replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+            // Remove ORCID URLs
+            .replace(/https?:\/\/orcid\.org\/[\S]+/gi, '')
+            // Remove credential suffixes (with optional leading comma/space)
+            .replace(/,?\s*\b(MD|PhD|MBBS|MPH|DrPH|DPhil|MSc|BSc|BA|FRACP|FANZCA|FRACS|FACEM|FRCSC|FRCP|MRCP|MB|BCh|BAO|ChB)\b\.?/gi, '')
+            // Remove superscript affiliation numbers (digits possibly mixed with spaces/commas)
+            .replace(/\d+/g, '')
+            // Remove stray punctuation left after stripping digits (e.g. lone commas at line start)
+            .split('\n').map(l => l.replace(/^[\s,;]+|[\s,;]+$/g, '').trim()).filter(l => l.length > 1).join('\n')
+            .trim();
+
+        if (!cleaned) return [];
+
+        // Step 2: Determine delimiter and split into name entries
+        let entries;
+
+        if (cleaned.includes('&')) {
+            // Ampersand present → treat commas AND & as name separators (natural order)
+            entries = cleaned.split(/\s*[&,\n]\s*|\s+and\s+/i)
+                .map(s => s.trim()).filter(s => s.length > 1);
+        } else if (cleaned.includes(';')) {
+            // Semicolons → "Family, Given; Family, Given" format
+            entries = cleaned.split(/\s*;\s*|\n+/).map(s => s.trim()).filter(Boolean);
+        } else if ((cleaned.match(/\n/g) || []).length >= 1) {
+            // Multiple lines → one name per line (may still have commas for "Family, Given")
+            entries = cleaned.split('\n').map(s => s.trim()).filter(s => s.length > 1);
+        } else {
+            // Comma-only text: detect if commas separate full names or "Family, Given" pairs
+            const parts = cleaned.split(',').map(s => s.trim()).filter(Boolean);
+            // If most comma segments contain a space (i.e. have first+last), treat as name separators
+            const multiWordCount = parts.filter(p => /\S+\s+\S+/.test(p)).length;
+            if (multiWordCount > parts.length / 2) {
+                // "Given Family, Given Family" format
+                entries = parts;
+            } else {
+                // "Family, Given" pairs: every two segments form one name
+                entries = [];
+                for (let i = 0; i < parts.length - 1; i += 2) {
+                    entries.push(`${parts[i]}, ${parts[i + 1]}`);
+                }
+                if (parts.length % 2 !== 0) entries.push(parts[parts.length - 1]);
+            }
+        }
+
+        // Step 3: Parse each entry into {given, family}
         return entries.map(entry => {
+            entry = entry.replace(/\s+/g, ' ').trim();
+            if (!entry) return null;
+
             if (entry.includes(',')) {
                 // "Family, Given" format
-                const parts = entry.split(',').map(s => s.trim());
-                return { given: parts[1] || '', family: parts[0] };
+                const idx = entry.indexOf(',');
+                const family = entry.slice(0, idx).trim();
+                const given = entry.slice(idx + 1).trim();
+                if (family) return { given, family };
             }
-            // "Given Family" format — last word is family name
-            const parts = entry.trim().split(/\s+/);
+
+            // "Given Family" format — last token is the family name
+            const parts = entry.split(/\s+/).filter(Boolean);
+            if (parts.length === 0) return null;
             if (parts.length === 1) return { given: '', family: parts[0] };
             const family = parts.pop();
             return { given: parts.join(' '), family };
-        });
+        }).filter(Boolean);
     }
 
     // ===== API FUNCTIONS =====
@@ -1268,7 +1391,7 @@
             year: String(year),
             volume: work.volume || '',
             issue: work.issue || '',
-            pages: work.page ? convertEnDash(work.page) : '',
+            pages: work.page ? formatPageRange(work.page) : '',
             publisher: work.publisher || '',
             publishPlace: '',
             edition: work['edition-number'] || '',
@@ -1317,7 +1440,10 @@
         const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${cleaned}`;
 
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`Google Books API error (${response.status}).`);
+        if (response.status === 429) {
+            throw new Error('Google Books rate limit reached. Please wait a moment and try again.');
+        }
+        if (!response.ok) throw new Error(`Google Books API error (${response.status}). Please try again.`);
 
         const data = await response.json();
         if (!data.items || data.items.length === 0) return null;
@@ -1349,7 +1475,7 @@
         result = await fetchFromGoogleBooks(isbn);
         if (result) return result;
 
-        throw new Error('ISBN not found in Open Library or Google Books. Please check the ISBN or enter details manually.');
+        throw new Error('This ISBN was not found in Open Library or Google Books. It may not be indexed (common for government and specialist publications). Please use the Manual entry tab instead.');
     }
 
     // ===== CITATION FORMATTERS =====
@@ -1364,14 +1490,14 @@
         const year = data.year || 'n.d.';
 
         let parts = [];
-        parts.push(linkTitle(`'${data.title}'`, data));
+        parts.push(`'${linkTitle(data.title, data)}'`);
         if (data.journalName) parts.push(`<em>${data.journalName}</em>`);
 
         // Volume/issue/pages as one unit
         if (data.volume) {
             let volPart = data.volume;
             if (data.issue) volPart += `(${data.issue})`;
-            if (data.pages) volPart += `:${convertEnDash(data.pages)}`;
+            if (data.pages) volPart += `:${formatPageRange(data.pages)}`;
             parts.push(volPart);
         } else if (data.pages) {
             parts.push(convertEnDash(data.pages));
@@ -1440,6 +1566,7 @@
             bookPart += `${edList} (${edLabel}) `;
         }
         bookPart += `<em>${data.bookTitle || ''}</em>`;
+        if (data.edition) bookPart += `, ${formatEdition(data.edition)}`;
         parts.push(bookPart);
 
         if (data.publisher) parts.push(data.publisher);
@@ -1497,6 +1624,12 @@
         let parts = [];
         parts.push(linkTitle(`<em>${data.title}</em>`, data));
 
+        // Optional series name and/or report number
+        if (data.seriesName || data.reportNumber) {
+            let seriesPart = [data.seriesName, data.reportNumber].filter(Boolean).join(' ');
+            parts.push(seriesPart);
+        }
+
         // Repeat the short agency name after the title
         if (data.orgAbbrev) {
             parts.push(data.orgAbbrev);
@@ -1529,7 +1662,7 @@
         const accessDate = data.accessDate || getTodayFormatted();
 
         let parts = [];
-        parts.push(linkTitle(`'${data.title}'`, data));
+        parts.push(`'${linkTitle(data.title, data)}'`);
         if (data.publicationName) parts.push(`<em>${data.publicationName}</em>`);
         if (data.accessDate || data.url) parts.push(`accessed ${accessDate}`);
 
@@ -1633,7 +1766,7 @@
             html += `<button type="button" class="author-add" data-comp="${containerId}">+ Add author</button>`;
             html += `<details class="paste-authors">
                 <summary>Paste author list</summary>
-                <textarea data-comp="${containerId}" placeholder="Paste names separated by semicolons, e.g.:\nTim Kelleher; John Smith\nor\nKelleher, Tim; Smith, John"></textarea>
+                <textarea data-comp="${containerId}" placeholder="Paste an author list. Supported formats:&#10;Given Family, Given Family (comma-separated)&#10;Given Family &amp; Given Family (ampersand-separated)&#10;Family, Given; Family, Given (semicolon-separated)&#10;One name per line&#10;&#10;Affiliation numbers and credentials (PhD, MD) are stripped automatically."></textarea>
                 <button type="button" class="paste-parse-btn" data-comp="${containerId}">Parse names</button>
             </details>`;
         } else {
@@ -1757,6 +1890,21 @@
     }
 
     /**
+     * Show the URL detection notice inside the manual panel (between type grid and form).
+     */
+    function showUrlNotice(message) {
+        const el = document.getElementById('url-notice');
+        if (!el) return;
+        el.textContent = message;
+        el.className = 'status visible success';
+    }
+
+    function hideUrlNotice() {
+        const el = document.getElementById('url-notice');
+        if (el) el.className = 'status';
+    }
+
+    /**
      * Build and render the manual form for the given source type.
      */
     function buildForm(sourceType, prefillData) {
@@ -1808,10 +1956,12 @@
         container.innerHTML = html;
 
         // Initialise author component
+        // Govt reports default to Organisation mode (most common use case)
+        const defaultAuthorMode = prefillData?.authorMode || (sourceType === 'report' ? 'organisation' : 'person');
         const authorOpts = {
             label: sourceType === 'chapter' ? 'Chapter author(s)' : 'Author(s)',
             showOrgToggle: ['website', 'report'].includes(sourceType),
-            defaultMode: prefillData?.authorMode || 'person',
+            defaultMode: defaultAuthorMode,
             persons: prefillData?.authors?.length ? prefillData.authors : [{ given: '', family: '' }],
             orgAbbrev: prefillData?.orgAbbrev || '',
             orgFull: prefillData?.orgFull || '',
@@ -1834,14 +1984,21 @@
         if (field.id === 'accessDate' && !value) {
             value = getTodayFormatted();
         }
+        // Apply defaultValue for fields that have one (e.g. governmentName)
+        if (!value && field.defaultValue) {
+            value = field.defaultValue;
+        }
         const placeholder = field.placeholder || '';
         const req = field.required ? ' *' : '';
         const scBtn = field.sentenceCase
-            ? ` <button type="button" class="sentence-case-btn" data-target="field-${sourceType}-${field.id}" title="Convert to sentence case">Aa</button>`
+            ? ` <button type="button" class="sentence-case-btn" data-target="field-${sourceType}-${field.id}" title="Convert to sentence case">Aa Convert to sentence case</button>`
+            : '';
+        const helpTextHtml = field.helpText
+            ? `<p class="help-text">${field.helpText}</p>`
             : '';
 
         return `<label for="field-${sourceType}-${field.id}">${field.label}${req}</label>${scBtn}
-            <input type="text" id="field-${sourceType}-${field.id}" value="${escAttr(value)}" placeholder="${escAttr(placeholder)}">`;
+            <input type="text" id="field-${sourceType}-${field.id}" value="${escAttr(value)}" placeholder="${escAttr(placeholder)}">${helpTextHtml}`;
     }
 
     function wrapHalfRow(items) {
@@ -2057,6 +2214,37 @@
     }
 
     /**
+     * Save all current form field values and author state for the given source type.
+     * Called before switching to a different source type so values persist.
+     */
+    function saveFormState(type) {
+        if (!type || !SOURCE_FIELDS[type]) return;
+        const saved = {};
+
+        // Save author component state
+        const authorData = getAuthorData('ac-author');
+        saved.authorMode = authorData.authorMode;
+        saved.authors = authorData.authors;
+        saved.orgAbbrev = authorData.orgAbbrev;
+        saved.orgFull = authorData.orgFull;
+
+        // Save editor state for chapters
+        if (type === 'chapter') {
+            const editorData = getAuthorData('ac-editor');
+            saved.editors = editorData.authors;
+        }
+
+        // Save all visible field values
+        for (const field of SOURCE_FIELDS[type]) {
+            if (field.id.startsWith('_')) continue;
+            const el = document.getElementById(`field-${type}-${field.id}`);
+            if (el) saved[field.id] = el.value;
+        }
+
+        formState[type] = saved;
+    }
+
+    /**
      * Select a source type button and update state.
      */
     function selectSourceType(type) {
@@ -2139,15 +2327,14 @@
                     titleField.placeholder = 'Copy the page title from your browser tab';
                 }
 
+                const displayType = TYPE_DISPLAY_NAMES[suggestedType] || suggestedType;
                 if (orgMatch) {
-                    showStatus(
-                        `Organisation identified as \u2018${orgMatch.abbrev || orgMatch.full}\u2019. Copy the page title from your browser tab and complete any remaining fields.`,
-                        'success'
+                    showUrlNotice(
+                        `URL detected. We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Organisation identified as \u2018${orgMatch.abbrev || orgMatch.full}\u2019. Check if this is the appropriate type and complete the remaining fields.`
                     );
                 } else {
-                    showStatus(
-                        `URL detected. We\u2019ve suggested \u2018${suggestedType}\u2019 as the source type and pre-filled the URL and access date. Please complete the remaining fields.`,
-                        'success'
+                    showUrlNotice(
+                        `URL detected. We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Check if this is the appropriate type and complete the remaining fields.`
                     );
                 }
 
@@ -2201,9 +2388,11 @@
         // Source type buttons
         document.querySelectorAll('.source-type-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                saveFormState(state.sourceType);          // Persist current values
                 selectSourceType(btn.dataset.type);
-                buildForm(state.sourceType);
+                buildForm(state.sourceType, formState[state.sourceType]);  // Restore saved values
                 hideStatus();
+                hideUrlNotice();
                 document.getElementById('result-area').classList.remove('visible');
             });
         });
@@ -2244,6 +2433,17 @@
                 }
             }
         });
+
+        // Date auto-formatting: reformat on blur for fullDate and accessDate fields
+        document.getElementById('manual-form').addEventListener('blur', (e) => {
+            const id = e.target.id || '';
+            if (e.target.tagName === 'INPUT' && (id.endsWith('-fullDate') || id.endsWith('-accessDate'))) {
+                const formatted = autoFormatDate(e.target.value);
+                if (formatted !== e.target.value) {
+                    e.target.value = formatted;
+                }
+            }
+        }, true); // Capture phase so blur events bubble up
 
         // === INITIALISATION ===
         buildForm('journal');
