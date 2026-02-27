@@ -2363,7 +2363,7 @@
                 }
 
                 showUrlNotice(
-                    `URL detected. We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date.${orgNotice} Fetching page title\u2026`
+                    `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Fetching page title\u2026`
                 );
 
                 // Try to fetch the page title via CORS proxy (best effort, fails gracefully)
@@ -2373,7 +2373,7 @@
                         titleField.value = pageTitle;
                         titleField.placeholder = '';
                         showUrlNotice(
-                            `URL detected. We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL, access date, and page title.${orgNotice} Check if this is the appropriate type and review the pre-filled fields.`
+                            `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL, access date, and page title. Check if this is the appropriate type and review the pre-filled fields.`
                         );
                     } else {
                         titleField.placeholder = '';
@@ -2388,7 +2388,7 @@
                             helpEl.textContent = 'Unable to autofill. Please paste in the title from the webpage.';
                         }
                         showUrlNotice(
-                            `URL detected. We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date.${orgNotice} Check if this is the appropriate type and complete the remaining fields.`
+                            `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Check if this is the appropriate type and complete the remaining fields.`
                         );
                     }
                 });
