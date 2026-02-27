@@ -336,20 +336,23 @@
         }
 
         .sentence-case-btn {
-            padding: 2px 8px;
-            border: 1px solid #d1d5db;
+            display: inline-block;
+            padding: 4px 12px;
+            border: 1px solid #9ca3af;
             border-radius: 4px;
-            background: white;
-            font-size: 11px;
-            color: #6b7280;
+            background: #f3f4f6;
+            font-size: 12px;
+            color: #374151;
             cursor: pointer;
             font-family: inherit;
-            margin-left: 8px;
+            font-weight: 500;
+            margin-bottom: 8px;
         }
 
         .sentence-case-btn:hover {
-            background: #f3f4f6;
-            color: #374151;
+            background: #e5e7eb;
+            border-color: #6b7280;
+            color: #111827;
         }
 
         /* ===== BUTTONS ===== */
@@ -1478,6 +1481,32 @@
         throw new Error('This ISBN was not found in Open Library or Google Books. It may not be indexed (common for government and specialist publications). Please use the Manual entry tab instead.');
     }
 
+    /**
+     * Fetch the H1 (falling back to <title>) from a URL via a CORS proxy.
+     * Returns the title string, or null if unavailable for any reason.
+     */
+    async function fetchPageTitle(url) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+            const response = await fetch(proxyUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (!response.ok) return null;
+            const data = await response.json();
+            if (!data.contents) return null;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data.contents, 'text/html');
+            const h1 = doc.querySelector('h1');
+            if (h1 && h1.textContent.trim()) return h1.textContent.trim();
+            const titleTag = doc.querySelector('title');
+            if (titleTag && titleTag.textContent.trim()) return titleTag.textContent.trim();
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
     // ===== CITATION FORMATTERS =====
 
     /**
@@ -1991,7 +2020,7 @@
         const placeholder = field.placeholder || '';
         const req = field.required ? ' *' : '';
         const scBtn = field.sentenceCase
-            ? ` <button type="button" class="sentence-case-btn" data-target="field-${sourceType}-${field.id}" title="Convert to sentence case">Aa Convert to sentence case</button>`
+            ? ` <button type="button" class="sentence-case-btn" data-target="field-${sourceType}-${field.id}" title="Convert to sentence case">Convert to sentence case</button>`
             : '';
         const helpTextHtml = field.helpText
             ? `<p class="help-text">${field.helpText}</p>`
@@ -2321,25 +2350,48 @@
                 buildForm(suggestedType, prefill);
                 switchTab('manual');
 
-                // Set a helpful placeholder on the Page title field
-                const titleField = document.getElementById(`field-${suggestedType}-title`);
-                if (titleField && !titleField.value) {
-                    titleField.placeholder = 'Copy the page title from your browser tab';
-                }
-
-                const displayType = TYPE_DISPLAY_NAMES[suggestedType] || suggestedType;
-                if (orgMatch) {
-                    showUrlNotice(
-                        `URL detected. We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Organisation identified as \u2018${orgMatch.abbrev || orgMatch.full}\u2019. Check if this is the appropriate type and complete the remaining fields.`
-                    );
-                } else {
-                    showUrlNotice(
-                        `URL detected. We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Check if this is the appropriate type and complete the remaining fields.`
-                    );
-                }
-
                 // Scroll to form
                 document.getElementById('manual-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                const displayType = TYPE_DISPLAY_NAMES[suggestedType] || suggestedType;
+                const orgNotice = orgMatch ? ` Organisation identified as \u2018${orgMatch.abbrev || orgMatch.full}\u2019.` : '';
+
+                // Set loading placeholder on the title field while fetching
+                const titleField = document.getElementById(`field-${suggestedType}-title`);
+                if (titleField && !titleField.value) {
+                    titleField.placeholder = 'Fetching page title\u2026';
+                }
+
+                showUrlNotice(
+                    `URL detected. We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date.${orgNotice} Fetching page title\u2026`
+                );
+
+                // Try to fetch the page title via CORS proxy (best effort, fails gracefully)
+                fetchPageTitle(input).then(pageTitle => {
+                    if (!titleField) return;
+                    if (pageTitle) {
+                        titleField.value = pageTitle;
+                        titleField.placeholder = '';
+                        showUrlNotice(
+                            `URL detected. We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL, access date, and page title.${orgNotice} Check if this is the appropriate type and review the pre-filled fields.`
+                        );
+                    } else {
+                        titleField.placeholder = '';
+                        const parent = titleField.closest('.form-field');
+                        if (parent) {
+                            let helpEl = parent.querySelector('.help-text');
+                            if (!helpEl) {
+                                helpEl = document.createElement('p');
+                                helpEl.className = 'help-text';
+                                parent.appendChild(helpEl);
+                            }
+                            helpEl.textContent = 'Unable to autofill. Please paste in the title from the webpage.';
+                        }
+                        showUrlNotice(
+                            `URL detected. We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date.${orgNotice} Check if this is the appropriate type and complete the remaining fields.`
+                        );
+                    }
+                });
 
             } else {
                 showStatus(
