@@ -958,10 +958,7 @@
             if (word.length >= 2 && word === word.toUpperCase() && /[A-Z]/.test(word)) return word;
             // First word: capitalise first letter, lowercase rest
             if (i === 0) return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-            // After a colon: capitalise first letter
-            if (i > 0 && words[i - 1].endsWith(':')) {
-                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-            }
+
             return word.toLowerCase();
         }).join(' ');
     }
