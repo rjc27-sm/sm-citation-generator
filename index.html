@@ -87,7 +87,7 @@
         /* ===== SOURCE TYPE GRID ===== */
         .source-type-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             margin-bottom: 24px;
         }
@@ -676,6 +676,8 @@
                     <button class="source-type-btn" data-type="website" role="radio" aria-checked="false" type="button">Webpage</button>
                     <button class="source-type-btn" data-type="report" role="radio" aria-checked="false" type="button">Govt report</button>
                     <button class="source-type-btn" data-type="newspaper" role="radio" aria-checked="false" type="button">Newspaper</button>
+                    <button class="source-type-btn" data-type="dataset" role="radio" aria-checked="false" type="button">Data set</button>
+                    <button class="source-type-btn" data-type="mediarelease" role="radio" aria-checked="false" type="button">Media release</button>
                 </div>
                 <div id="url-notice" class="status" role="status" aria-live="polite"></div>
                 <div id="manual-form"></div>
@@ -790,6 +792,20 @@
             { id: 'publicationName', label: 'Publication name', required: true, placeholder: 'e.g. The Conversation' },
             { id: 'fullDate', label: 'Full publication date', placeholder: 'e.g. 24 May 2018', helpText: 'Enter as D Month YYYY, or as D/M/YYYY — auto-converted on leaving field' },
             { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 29 January 2020' },
+            { id: 'url', label: 'URL' },
+        ],
+        dataset: [
+            { id: 'title', label: 'Dataset title', required: true, sentenceCase: true },
+            { id: 'year', label: 'Year', half: true },
+            { id: 'websiteName', label: 'Website name', half: true, placeholder: 'e.g. data.gov.au' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 4 January 2020' },
+            { id: 'url', label: 'URL' },
+        ],
+        mediarelease: [
+            { id: 'title', label: 'Title', required: true, sentenceCase: true },
+            { id: 'fullDate', label: 'Full publication date', placeholder: 'e.g. 4 February 2020', helpText: 'Enter as D Month YYYY, or as D/M/YYYY — auto-converted on leaving field' },
+            { id: 'organisation', label: 'Issuing organisation', placeholder: 'e.g. ACT Government' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 5 February 2020' },
             { id: 'url', label: 'URL' },
         ],
     };
@@ -1703,6 +1719,59 @@
     }
 
     /**
+     * Data set:
+     * Author A (Year) Title of data set [data set], Name of Website website, accessed Day Month Year.
+     */
+    function formatDataset(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const year = data.year || 'n.d.';
+        const accessDate = data.accessDate || getTodayFormatted();
+
+        let parts = [];
+        const linkedTitle = linkTitle(`<em>${data.title}</em>`, data);
+        parts.push(`${linkedTitle} [data set]`);
+        if (data.websiteName) parts.push(formatWebsiteName(data.websiteName));
+        parts.push(`accessed ${accessDate}`);
+
+        const body = parts.join(', ');
+        const html = `${authors} (${year}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Media release:
+     * Author A (Day Month Year) Title of media release [media release], Organisation Name, accessed Day Month Year.
+     */
+    function formatMediaRelease(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const fullDate = data.fullDate || data.year || 'n.d.';
+        const year = (fullDate.match(/\d{4}/) || [])[0] || 'n.d.';
+        const accessDate = data.accessDate || getTodayFormatted();
+
+        let parts = [];
+        const linkedTitle = linkTitle(`<em>${data.title}</em>`, data);
+        parts.push(`${linkedTitle} [media release]`);
+        if (data.organisation) parts.push(data.organisation);
+        if (data.accessDate || data.url) parts.push(`accessed ${accessDate}`);
+
+        const body = parts.join(', ');
+        const html = `${authors} (${fullDate}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
      * Build in-text citation options: narrative form and parenthetical form.
      */
     function buildIntextOptions(authorStr, year) {
@@ -1729,13 +1798,15 @@
         }
 
         switch (sourceType) {
-            case 'journal':  return formatJournalArticle(data);
-            case 'book':     return formatBook(data);
-            case 'chapter':  return formatBookChapter(data);
-            case 'website':  return formatWebsite(data);
-            case 'report':   return formatReport(data);
-            case 'newspaper': return formatNewspaper(data);
-            default:         return formatBook(data);
+            case 'journal':      return formatJournalArticle(data);
+            case 'book':         return formatBook(data);
+            case 'chapter':      return formatBookChapter(data);
+            case 'website':      return formatWebsite(data);
+            case 'report':       return formatReport(data);
+            case 'newspaper':    return formatNewspaper(data);
+            case 'dataset':      return formatDataset(data);
+            case 'mediarelease': return formatMediaRelease(data);
+            default:             return formatBook(data);
         }
     }
 
@@ -1983,10 +2054,10 @@
 
         // Initialise author component
         // Govt reports default to Organisation mode (most common use case)
-        const defaultAuthorMode = prefillData?.authorMode || (sourceType === 'report' ? 'organisation' : 'person');
+        const defaultAuthorMode = prefillData?.authorMode || (['report', 'dataset'].includes(sourceType) ? 'organisation' : 'person');
         const authorOpts = {
             label: sourceType === 'chapter' ? 'Chapter author(s)' : 'Author(s)',
-            showOrgToggle: ['website', 'report'].includes(sourceType),
+            showOrgToggle: ['website', 'report', 'dataset', 'mediarelease'].includes(sourceType),
             defaultMode: defaultAuthorMode,
             persons: prefillData?.authors?.length ? prefillData.authors : [{ given: '', family: '' }],
             orgAbbrev: prefillData?.orgAbbrev || '',
