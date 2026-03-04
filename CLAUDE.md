@@ -30,7 +30,7 @@ All logic, styles, and markup live in one file. The app is hosted on GitHub Page
 | `CITATION FORMATTERS` | One function per source type, plus `formatCitation()` dispatch |
 | `AUTHOR COMPONENT` | `initAuthorComponent`, `renderAuthorComponent`, `attachAuthorComponentEvents`, `getAuthorData` |
 | `FORM BUILDING` | `buildForm`, `buildFieldHtml`, `wrapHalfRow` |
-| `DATA COLLECTION` | `collectFormData`, `mapLookupToFormData`, `saveFormState` |
+| `DATA COLLECTION` | `collectFormData`, `mapLookupToFormData`, `saveFormState`, `seedFormState` |
 | `DISPLAY & COPY` | `displayResult`, `copyPlainText`, `copyRichText` |
 | `SMART PASTE HANDLER` | `handleSmartPaste` — routes DOI/ISBN/URL to correct API |
 | `EVENT LISTENERS` | All wired up in a single `DOMContentLoaded` block at the bottom |
@@ -186,6 +186,7 @@ parts.push(`${linkedTitle} [data set]`);
 - `buildForm(sourceType, prefillData)` — renders the author component(s) and all fields into `#manual-form`
 - Field IDs follow the pattern `field-{sourceType}-{fieldId}` (e.g. `field-journal-title`)
 - `saveFormState(type)` — called before switching source types; snapshots all field values and author state into `formState[type]`
+- `seedFormState(fromType, toType)` — called after switching; if the new type has never been visited (`formState[toType]` is undefined), copies matching field IDs and author state from the previous type's saved state so the user doesn't lose common data (title, URL, access date, etc.) when switching to a new type for the first time
 - `formState` persists in memory for the page session so switching types and back doesn't lose data
 
 ---

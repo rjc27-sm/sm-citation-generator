@@ -643,7 +643,7 @@
     <div class="container">
         <header>
             <h1>Style Manual citation generator</h1>
-            <p>Generate citations in the Australian Government Style Manual author&ndash;date format</p>
+            <p>Generate citations in the Australian Government Style Manual author&ndash;date format. Refresh your browser to start a new citation.</p>
         </header>
 
         <main>
@@ -782,8 +782,6 @@
             { id: 'title', label: 'Report title', required: true, sentenceCase: true },
             { id: 'year', label: 'Year', half: true },
             { id: 'governmentName', label: 'Government name', half: true, placeholder: 'e.g. Australian Government', defaultValue: 'Australian Government' },
-            { id: 'seriesName', label: 'Series name (optional)' },
-            { id: 'reportNumber', label: 'Report number (optional)', half: true },
             { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 3 February 2020' },
             { id: 'url', label: 'URL' },
         ],
@@ -1666,11 +1664,6 @@
         let parts = [];
         parts.push(linkTitle(`<em>${data.title}</em>`, data));
 
-        // Optional series name and/or report number
-        if (data.seriesName || data.reportNumber) {
-            let seriesPart = [data.seriesName, data.reportNumber].filter(Boolean).join(' ');
-            parts.push(seriesPart);
-        }
 
         // Repeat the short agency name after the title
         if (data.orgAbbrev) {
@@ -2342,6 +2335,34 @@
     }
 
     /**
+     * When switching to a type for the first time, seed its formState from the
+     * previous type's state — copying author data and any field values whose id
+     * exists in both types. Only runs when formState[toType] is undefined.
+     */
+    function seedFormState(fromType, toType) {
+        if (formState[toType] || !formState[fromType] || !SOURCE_FIELDS[toType]) return;
+
+        const from = formState[fromType];
+        const seed = {};
+
+        // Copy author component state
+        if (from.authorMode !== undefined) seed.authorMode = from.authorMode;
+        if (from.authors)                  seed.authors    = from.authors;
+        if (from.orgAbbrev !== undefined)  seed.orgAbbrev  = from.orgAbbrev;
+        if (from.orgFull !== undefined)    seed.orgFull    = from.orgFull;
+
+        // Copy field values whose id exists in the target type
+        const toFieldIds = new Set(
+            SOURCE_FIELDS[toType].map(f => f.id).filter(id => !id.startsWith('_'))
+        );
+        for (const id of toFieldIds) {
+            if (from[id] !== undefined && from[id] !== '') seed[id] = from[id];
+        }
+
+        formState[toType] = seed;
+    }
+
+    /**
      * Select a source type button and update state.
      */
     function selectSourceType(type) {
@@ -2508,8 +2529,10 @@
         // Source type buttons
         document.querySelectorAll('.source-type-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                saveFormState(state.sourceType);          // Persist current values
+                const previousType = state.sourceType;
+                saveFormState(previousType);              // Persist current values
                 selectSourceType(btn.dataset.type);
+                seedFormState(previousType, state.sourceType);  // Seed on first visit
                 buildForm(state.sourceType, formState[state.sourceType]);  // Restore saved values
                 hideStatus();
                 hideUrlNotice();
