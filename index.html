@@ -962,18 +962,19 @@
 
     /**
      * Attempt sentence case conversion.
-     * Preserves words that appear to be proper nouns (capitalised in original
-     * and not the first word) and ALL-CAPS acronyms.
+     * Preserves ALL-CAPS acronyms (2+ chars), unless the entire title is all-caps
+     * (in which case the title is just uppercased text, not a mix of acronyms).
      */
     function toSentenceCase(title) {
         if (!title) return '';
         const words = title.split(/\s+/);
+        // If the whole title is all-caps, treat it as plain text — don't preserve any "acronyms"
+        const allCaps = words.every(w => /^[^a-z]+$/.test(w));
         return words.map((word, i) => {
-            // Keep ALL-CAPS acronyms (2+ chars)
-            if (word.length >= 2 && word === word.toUpperCase() && /[A-Z]/.test(word)) return word;
+            // Keep ALL-CAPS acronyms (2+ chars) only when the title is mixed case
+            if (!allCaps && word.length >= 2 && word === word.toUpperCase() && /[A-Z]/.test(word)) return word;
             // First word: capitalise first letter, lowercase rest
             if (i === 0) return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-
             return word.toLowerCase();
         }).join(' ');
     }
