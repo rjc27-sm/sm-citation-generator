@@ -789,7 +789,7 @@
         newspaper: [
             { id: 'title', label: 'Article title', required: true, sentenceCase: true },
             { id: 'publicationName', label: 'Publication name', required: true, placeholder: 'e.g. The Conversation' },
-            { id: 'fullDate', label: 'Full publication date', placeholder: 'e.g. 24 May 2018', helpText: 'Enter as D Month YYYY, or as D/M/YYYY – auto-converted on leaving field' },
+            { id: 'fullDate', label: 'Full publication date', placeholder: 'e.g. 24 May 2018', helpText: 'Enter as D Month YYYY, D/M/YYYY, or Month D, YYYY – auto-converted on leaving field' },
             { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 29 January 2020' },
             { id: 'url', label: 'URL' },
         ],
@@ -802,7 +802,7 @@
         ],
         mediarelease: [
             { id: 'title', label: 'Title', required: true, sentenceCase: true },
-            { id: 'fullDate', label: 'Full publication date', placeholder: 'e.g. 4 February 2020', helpText: 'Enter as D Month YYYY, or as D/M/YYYY – auto-converted on leaving field' },
+            { id: 'fullDate', label: 'Full publication date', placeholder: 'e.g. 4 February 2020', helpText: 'Enter as D Month YYYY, D/M/YYYY, or Month D, YYYY – auto-converted on leaving field' },
             { id: 'organisation', label: 'Issuing organisation', placeholder: 'e.g. ACT Government' },
             { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 5 February 2020' },
             { id: 'url', label: 'URL' },
@@ -979,18 +979,35 @@
     }
 
     /**
-     * Attempt to parse a date string in common Australian formats and reformat to "D Month YYYY".
-     * Handles: D/M/YY, D/M/YYYY, DD/MM/YY, DD/MM/YYYY (slash or hyphen separators).
+     * Attempt to parse a date string in common formats and reformat to "D Month YYYY".
+     * Handles: D/M/YY, D/M/YYYY, DD/MM/YY, DD/MM/YYYY (slash or hyphen separators),
+     * and US format "Month D, YYYY" (e.g. "May 11, 2023").
      * Returns the original string unchanged if the format is not recognised.
      */
     function autoFormatDate(value) {
         if (!value) return value;
         const trimmed = value.trim();
-        const m = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-        if (!m) return trimmed;
 
         const months = ['January','February','March','April','May','June',
                         'July','August','September','October','November','December'];
+
+        // US format: "Month D, YYYY" or "Month DD, YYYY" (e.g. "May 11, 2023")
+        const us = trimmed.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
+        if (us) {
+            const monthName = us[1];
+            const monthIdx = months.findIndex(n => n.toLowerCase() === monthName.toLowerCase());
+            if (monthIdx !== -1) {
+                const day = parseInt(us[2], 10);
+                const year = parseInt(us[3], 10);
+                if (day >= 1 && day <= 31) return `${day} ${months[monthIdx]} ${year}`;
+            }
+            return trimmed;
+        }
+
+        // Numeric format: D/M/YY, D/M/YYYY (slash or hyphen separators)
+        const m = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+        if (!m) return trimmed;
+
         const day = parseInt(m[1], 10);
         const month = parseInt(m[2], 10);
         let year = parseInt(m[3], 10);
