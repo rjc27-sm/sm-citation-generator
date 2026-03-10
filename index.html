@@ -1405,7 +1405,10 @@
         const work = data.message;
 
         // Extract full publication date if available
-        const dateParts = work.published?.['date-parts']?.[0] ||
+        // Prefer published-print (journal issue year) over published-online (online-first year),
+        // as AGSM citations use the year of journal assignment, not the early-access date.
+        const dateParts = work['published-print']?.['date-parts']?.[0] ||
+                          work['published-online']?.['date-parts']?.[0] ||
                           work.created?.['date-parts']?.[0] || [];
         const year = dateParts[0] || 'n.d.';
 
