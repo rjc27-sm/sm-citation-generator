@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help – Style Manual citation generator</title>
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #1d1d1d;
+            background: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* ===== LAYOUT ===== */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: #1c3a5f;
+            color: white;
+            padding: 24px 32px;
+            border-radius: 8px 8px 0 0;
+        }
+
+        header h1 {
+            margin: 0 0 6px 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        header p {
+            margin: 0;
+            opacity: 0.85;
+            font-size: 14px;
+        }
+
+        header a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 13px;
+        }
+
+        header a:hover {
+            color: white;
+            text-decoration: underline;
+        }
+
+        main {
+            background: white;
+            padding: 32px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        /* ===== FAQ ===== */
+        .faq-section {
+            margin-bottom: 32px;
+        }
+
+        .faq-section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1c3a5f;
+            margin: 0 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        details {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+
+        details[open] {
+            border-color: #c7d2e0;
+        }
+
+        summary {
+            padding: 14px 16px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1d1d1d;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        summary::after {
+            content: '+';
+            font-size: 18px;
+            color: #6b7280;
+            font-weight: 400;
+            flex-shrink: 0;
+            margin-left: 12px;
+        }
+
+        details[open] summary::after {
+            content: '–';
+        }
+
+        summary:hover {
+            background: #f9fafb;
+        }
+
+        .faq-answer {
+            padding: 4px 16px 16px 16px;
+            font-size: 14px;
+            color: #374151;
+            line-height: 1.7;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .faq-answer p {
+            margin: 12px 0 0 0;
+        }
+
+        .faq-answer p:first-child {
+            margin-top: 12px;
+        }
+
+        .faq-answer ul {
+            margin: 8px 0 0 0;
+            padding-left: 20px;
+        }
+
+        .faq-answer li {
+            margin-bottom: 4px;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer-note {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .footer-note p {
+            margin: 0 0 6px 0;
+        }
+
+        .footer-note a {
+            color: #1c3a5f;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            header { padding: 20px; }
+            header h1 { font-size: 20px; }
+            main { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Style Manual citation generator</h1>
+            <p><a href="index.html">&larr; Back to the citation generator</a></p>
+        </header>
+
+        <main>
+            <h2 style="font-size:20px;font-weight:600;margin:0 0 8px 0;color:#1d1d1d;border:none;padding:0;">Help</h2>
+            <p style="font-size:14px;color:#374151;margin:0 0 28px 0;">Got a question about the citation generator? Check here for answers first. If your question isn't answered here, please use the <a href="https://forms.office.com/Pages/ResponsePage.aspx?id=CzcK22S1RUCEh5b_lwUSwHlJFHEe3VtHiDghW-pGfWpUNVRSVkVKWDkyOTdIWkVOTk5NSTFJMFpWTS4u" target="_blank" rel="noopener">feedback form</a> to submit your question or feedback.</p>
+
+            <!-- ===== QUICK LOOKUP ===== -->
+            <div class="faq-section">
+                <h2>Quick lookup</h2>
+
+                <details>
+                    <summary>Why didn't the URL lookup fill in the page title?</summary>
+                    <div class="faq-answer">
+                        <p>The tool attempts to fetch the page title through a third-party proxy service. This often fails because:</p>
+                        <ul>
+                            <li>many websites block external requests of this kind</li>
+                            <li>the page content is rendered by JavaScript, and the proxy only retrieves the raw HTML (so it sees a blank page)</li>
+                            <li>the page title doesn't match the article headline.</li>
+                        </ul>
+                        <p>When the fetch fails or times out, the title field is left blank. Enter the title manually – copying it from the page itself is the most reliable approach.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>Why doesn't the URL lookup fill in the publication year?</summary>
+                    <div class="faq-answer">
+                        <p>Web pages have no standard machine-readable field for publication year. Dates appear in many different formats and locations, and attempting to extract them automatically would produce too many errors.</p>
+                        <p>Check the page itself for a publication or last-updated date and enter it in the Year field.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>Why didn't the URL lookup identify the organisation?</summary>
+                    <div class="faq-answer">
+                        <p>The tool matches <code>.gov.au</code> domain names against a built-in list of approximately 160 Australian Government bodies. Organisation pre-filling will not work if:</p>
+                        <ul>
+                            <li>the agency's domain isn't in the list</li>
+                            <li>the URL belongs to a state/territory or non-government website.</li>
+                        </ul>
+                        <p>Switch to the <strong>Organisation</strong> mode in the author field and enter the abbreviation and full name manually.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>My DOI wasn't found – what should I do?</summary>
+                    <div class="faq-answer">
+                        <p>DOIs are looked up via CrossRef. If the item isn't indexed in CrossRef (common for some government publications and preprints), the lookup will fail.</p>
+                        <p>Use the <strong>Manual entry</strong> tab and enter the details by hand. You can still include the DOI in the DOI field – it will be hyperlinked in the citation.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>My ISBN wasn't found – what should I do?</summary>
+                    <div class="faq-answer">
+                        <p>ISBNs are looked up via Open Library, then Google Books as a fallback. Government reports, specialist publications, and older books are often not indexed in either database.</p>
+                        <p>Use the <strong>Manual entry</strong> tab instead.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>The Quick Lookup selected the wrong source type – can I change it?</summary>
+                    <div class="faq-answer">
+                        <p>Yes. Click <strong>Edit details</strong> under the generated citation, then select a different source type using the buttons at the top of the form. Any pre-filled data will carry across to fields with matching names.</p>
+                    </div>
+                </details>
+            </div>
+
+            <!-- ===== MANUAL ENTRY ===== -->
+            <div class="faq-section">
+                <h2>Manual entry</h2>
+
+                <details>
+                    <summary>How do I enter author names?</summary>
+                    <div class="faq-answer">
+                        <p>Click <strong>+ Add author</strong> and fill in the given name(s) and family name in the separate fields. The tool formats the name to Style Manual conventions automatically (family name + initials, no full stops).</p>
+                        <p>For a long author list, use <strong>Paste author list</strong> – paste names separated by commas, semicolons, ampersands, or line breaks, in any order (e.g. "Smith J, Jones A" or "Jane Smith; Alex Jones"). The tool will strip credentials (PhD, MD, etc.) and affiliation numbers.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>How do I cite a source where the author is an organisation?</summary>
+                    <div class="faq-answer">
+                        <p>Select <strong>Organisation</strong> in the Author field toggle (available for Webpage, Govt report, Data set and Media release types). Enter the abbreviation (e.g. AIHW) and the full name (e.g. Australian Institute of Health and Welfare) in the two fields.</p>
+                        <p>If the organisation has no abbreviation, leave the abbreviation field blank and enter the full name only.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>What is "sentence case" and should I use it?</summary>
+                    <div class="faq-answer">
+                        <p>The Style Manual requires titles in sentence case: only the first word and proper nouns are capitalised. If the title you've copied is in title case (Every Word Capitalised), click <strong>Convert to sentence case</strong> to apply the conversion automatically.</p>
+                        <p>The tool preserves ALL-CAPS acronyms (e.g. ABS, UNESCO, NDIS). Always review the result – proper nouns such as place names and people's names won't be re-capitalised automatically and may need correcting by hand.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>The citation shows "n.d." instead of a year – why?</summary>
+                    <div class="faq-answer">
+                        <p>"n.d." (no date) is the Style Manual convention when a publication year is not available. It appears when the Year field is left blank.</p>
+                        <p>If the source has a year, enter it in the Year field and regenerate the citation.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>How do I enter a date for a newspaper article or media release?</summary>
+                    <div class="faq-answer">
+                        <p>These source types use a full publication date rather than just a year. Enter it in any of these formats – the tool will convert it automatically when you leave the field:</p>
+                        <ul>
+                            <li><code>4 March 2025</code></li>
+                            <li><code>4/3/2025</code> or <code>4/3/25</code></li>
+                            <li><code>March 4, 2025</code></li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+
+            <!-- ===== COPYING & USING CITATIONS ===== -->
+            <div class="faq-section">
+                <h2>Copying and using citations</h2>
+
+                <details>
+                    <summary>What is the difference between "Copy plain text" and "Copy with formatting"?</summary>
+                    <div class="faq-answer">
+                        <p><strong>Copy with formatting</strong> copies the citation with italics intact, so it pastes correctly into Word and Google Docs.</p>
+                        <p><strong>Copy plain text</strong> strips all formatting. Use this for plain-text environments such as email, Teams messages, or systems that don't support rich text.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>How do I copy an in-text citation?</summary>
+                    <div class="faq-answer">
+                        <p>Below the reference list entry, two in-text citation options are shown – one with the author outside the parentheses and one with the author inside. Click either one to copy it.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>How do I start a new citation?</summary>
+                    <div class="faq-answer">
+                        <p>Refresh the page in your browser (press <kbd>F5</kbd>, or <kbd>Ctrl+R</kbd> on Windows, or <kbd>Cmd+R</kbd> on Mac). This clears all fields and returns the tool to its starting state.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>The citation doesn't look right – what should I do?</summary>
+                    <div class="faq-answer">
+                        <p>The tool pre-fills what it can find, but you should always check citations before use. Click <strong>Edit details</strong> to go back to the form and correct any fields, then regenerate.</p>
+                        <p>For complex or unusual sources, the <strong>Manual entry</strong> tab gives you full control over every field.</p>
+                        <p>If you think the tool has a bug, use the feedback link at the bottom of the main page.</p>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer-note">
+                <p>This tool generates citations following the <a href="https://www.stylemanual.gov.au/referencing-and-attribution/author-date" target="_blank" rel="noopener">Australian Government Style Manual author&ndash;date system</a>.</p>
+                <p>Always check generated citations for accuracy, especially for complex sources.</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
