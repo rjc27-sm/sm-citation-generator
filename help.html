@@ -198,7 +198,12 @@
                             <li>If that finds nothing, it uses a second service that fully renders the page including JavaScript.</li>
                             <li>If both fetches fail, it infers a title from the words in the URL and flags it for you to verify.</li>
                         </ol>
-                        <p>Even so, some pages can't be retrieved (for example, paywalled content or pages behind a login). If the title field is still blank or incorrect, you will need to copy the title from the page itself and paste it in.</p>
+                        <p>Even so, some pages can't be retrieved. Common reasons include:</p>
+                        <ul>
+                            <li>the site uses a security service such as Cloudflare, which blocks automated requests before they reach the page content</li>
+                            <li>the content is behind a paywall or login.</li>
+                        </ul>
+                        <p>If the title field is still blank or incorrect, copy the title from the page itself and paste it in.</p>
                     </div>
                 </details>
 
