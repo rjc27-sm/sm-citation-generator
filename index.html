@@ -1517,6 +1517,14 @@
     }
 
     /**
+     * Returns true if a candidate title is a bot-detection or error page rather than
+     * real content — e.g. Cloudflare challenges, generic HTTP error titles, etc.
+     */
+    function isJunkTitle(title) {
+        return /^(just a moment|attention required|access denied|checking your browser|security check|one moment|please wait|ddos protection|403|404|forbidden|page not found|service unavailable|error)\b/i.test(title.trim());
+    }
+
+    /**
      * Fetch the page title from a URL using three strategies in order:
      * 1. Raw HTML via allorigins proxy — checks og:title, twitter:title, h1, <title>
      * 2. Jina AI reader (renders JavaScript) — parses "Title:" from markdown response
@@ -1538,17 +1546,20 @@
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(data.contents, 'text/html');
                     const og = doc.querySelector('meta[property="og:title"]');
-                    if (og && og.getAttribute('content')?.trim()) return { title: og.getAttribute('content').trim(), isHint: false };
+                    const ogVal = og?.getAttribute('content')?.trim();
+                    if (ogVal && !isJunkTitle(ogVal)) return { title: ogVal, isHint: false };
                     const tw = doc.querySelector('meta[name="twitter:title"]');
-                    if (tw && tw.getAttribute('content')?.trim()) return { title: tw.getAttribute('content').trim(), isHint: false };
+                    const twVal = tw?.getAttribute('content')?.trim();
+                    if (twVal && !isJunkTitle(twVal)) return { title: twVal, isHint: false };
                     const h1 = doc.querySelector('h1');
-                    if (h1 && h1.textContent.trim()) return { title: h1.textContent.trim(), isHint: false };
+                    const h1Val = h1?.textContent.trim();
+                    if (h1Val && !isJunkTitle(h1Val)) return { title: h1Val, isHint: false };
                     const titleTag = doc.querySelector('title');
                     if (titleTag) {
                         // Strip trailing " | Site Name" or " - Site Name" suffixes
                         const raw = titleTag.textContent.trim();
                         const cleaned = raw.replace(/\s*[|–—-]\s*[^|–—-]+$/, '').trim();
-                        if (cleaned) return { title: cleaned, isHint: false };
+                        if (cleaned && !isJunkTitle(cleaned)) return { title: cleaned, isHint: false };
                     }
                 }
             }
@@ -1563,7 +1574,8 @@
             if (response.ok) {
                 const text = await response.text();
                 const match = text.match(/^Title:\s*(.+)$/m);
-                if (match && match[1].trim()) return { title: match[1].trim(), isHint: false };
+                const jinaTitle = match?.[1].trim();
+                if (jinaTitle && !isJunkTitle(jinaTitle)) return { title: jinaTitle, isHint: false };
             }
         } catch { /* fall through to next strategy */ }
 
