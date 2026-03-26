@@ -32,6 +32,12 @@
             border-radius: 8px 8px 0 0;
         }
 
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
         header h1 {
             margin: 0 0 6px 0;
             font-size: 24px;
@@ -42,6 +48,23 @@
             margin: 0;
             opacity: 0.85;
             font-size: 14px;
+        }
+
+        .header-help-link {
+            color: white;
+            opacity: 0.85;
+            font-size: 14px;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.5);
+            white-space: nowrap;
+            margin-left: 16px;
+            padding-top: 3px;
+            flex-shrink: 0;
+        }
+
+        .header-help-link:hover {
+            opacity: 1;
+            border-bottom-color: white;
         }
 
         main {
@@ -643,8 +666,13 @@
 <body>
     <div class="container">
         <header>
-            <h1>Style Manual citation generator</h1>
-            <p>Generate citations in the Australian Government Style Manual author&ndash;date format.</p>
+            <div class="header-inner">
+                <div>
+                    <h1>Style Manual citation generator</h1>
+                    <p>Generate citations in the Australian Government Style Manual author&ndash;date format.</p>
+                </div>
+                <a href="help.html" class="header-help-link">Help</a>
+            </div>
         </header>
 
         <main>
@@ -2566,7 +2594,7 @@
                                 helpEl.className = 'help-text';
                                 parent.appendChild(helpEl);
                             }
-                            helpEl.textContent = 'Unable to autofill. Please paste in the title from the webpage.';
+                            helpEl.innerHTML = 'Page title couldn\u2019t be retrieved automatically \u2014 <a href="help.html#url-title" target="_blank">why not?</a> Copy the title from the page and paste it in.';
                         }
                         showUrlNotice(
                             `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Check if this is the appropriate type and complete the remaining fields.`
