@@ -211,6 +211,29 @@
             margin-top: 4px;
         }
 
+        .checkbox-field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-top: 28px; /* align checkbox with neighbouring input */
+        }
+
+        .checkbox-field input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+            cursor: pointer;
+            accent-color: #1c3a5f;
+        }
+
+        .checkbox-field label {
+            font-size: 14px;
+            color: #374151;
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: 0;
+        }
+
         .field-inline {
             display: flex;
             align-items: center;
@@ -812,7 +835,8 @@
         report: [
             { id: 'title', label: 'Report title', required: true, sentenceCase: true },
             { id: 'year', label: 'Year', half: true },
-            { id: 'governmentName', label: 'Government name', half: true, placeholder: 'e.g. Australian Government', defaultValue: 'Australian Government' },
+            { id: 'unpublished', label: 'Unpublished', type: 'checkbox', half: true },
+            { id: 'governmentName', label: 'Government name', placeholder: 'e.g. Australian Government', defaultValue: 'Australian Government' },
             { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 3 February 2020' },
             { id: 'url', label: 'URL' },
         ],
@@ -826,7 +850,8 @@
         dataset: [
             { id: 'title', label: 'Data set title', required: true, sentenceCase: true },
             { id: 'year', label: 'Year', half: true },
-            { id: 'websiteName', label: 'Website name', half: true, placeholder: 'e.g. data.gov.au' },
+            { id: 'unpublished', label: 'Unpublished', type: 'checkbox', half: true },
+            { id: 'websiteName', label: 'Website name', placeholder: 'e.g. data.gov.au' },
             { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 4 January 2020' },
             { id: 'url', label: 'URL' },
         ],
@@ -1763,7 +1788,7 @@
     function formatReport(data) {
         const authors = data.authorDisplay;
         const authorsInText = data.authorInText;
-        const year = data.year || 'n.d.';
+        const year = data.unpublished ? 'unpublished' : (data.year || 'n.d.');
         const accessDate = data.accessDate || getTodayFormatted();
 
         let parts = [];
@@ -1823,7 +1848,7 @@
     function formatDataset(data) {
         const authors = data.authorDisplay;
         const authorsInText = data.authorInText;
-        const year = data.year || 'n.d.';
+        const year = data.unpublished ? 'unpublished' : (data.year || 'n.d.');
         const accessDate = data.accessDate || getTodayFormatted();
 
         let parts = [];
@@ -2174,6 +2199,14 @@
     }
 
     function buildFieldHtml(field, sourceType, prefillData) {
+        if (field.type === 'checkbox') {
+            const checked = prefillData?.[field.id] ? ' checked' : '';
+            return `<div class="checkbox-field">
+                <input type="checkbox" id="field-${sourceType}-${field.id}"${checked}>
+                <label for="field-${sourceType}-${field.id}">${field.label}</label>
+            </div>`;
+        }
+
         let value = prefillData ? (prefillData[field.id] || '') : '';
         // Auto-fill access date with today if empty
         if (field.id === 'accessDate' && !value) {
@@ -2225,7 +2258,7 @@
         for (const field of fields) {
             if (field.id.startsWith('_')) continue; // Skip markers
             const el = document.getElementById(`field-${st}-${field.id}`);
-            if (el) data[field.id] = el.value.trim();
+            if (el) data[field.id] = el.type === 'checkbox' ? el.checked : el.value.trim();
         }
 
         // Normalise: default year to n.d. if blank
@@ -2433,7 +2466,7 @@
         for (const field of SOURCE_FIELDS[type]) {
             if (field.id.startsWith('_')) continue;
             const el = document.getElementById(`field-${type}-${field.id}`);
-            if (el) saved[field.id] = el.value;
+            if (el) saved[field.id] = el.type === 'checkbox' ? el.checked : el.value;
         }
 
         formState[type] = saved;
@@ -2659,6 +2692,14 @@
                 hideUrlNotice();
                 document.getElementById('result-area').classList.remove('visible');
             });
+        });
+
+        // Unpublished checkbox — disable year field when ticked
+        document.getElementById('manual-form').addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox' && e.target.id.endsWith('-unpublished')) {
+                const yearField = document.getElementById(`field-${state.sourceType}-year`);
+                if (yearField) yearField.disabled = e.target.checked;
+            }
         });
 
         // Generate citation button
