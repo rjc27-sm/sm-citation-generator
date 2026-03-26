@@ -2574,7 +2574,7 @@
                                     helpEl.className = 'help-text';
                                     parent.appendChild(helpEl);
                                 }
-                                helpEl.textContent = 'Title inferred from URL \u2014 please verify.';
+                                helpEl.innerHTML = 'Title inferred from URL \u2014 please verify. <a href="help.html#url-title" target="_blank">Why didn\u2019t it fetch the real title?</a>';
                             }
                             showUrlNotice(
                                 `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. A title has been inferred from the URL \u2014 please check and correct it if needed.`
