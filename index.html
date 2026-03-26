@@ -2156,7 +2156,7 @@
             if (field.half) {
                 halfBuffer.push(fieldHtml);
                 if (halfBuffer.length === 2) {
-                    html += `<div class="form-row">${halfBuffer.join('')}</div>`;
+                    html += wrapHalfRow(halfBuffer);
                     halfBuffer = [];
                 }
             } else {
