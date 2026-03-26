@@ -343,5 +343,17 @@
             </div>
         </main>
     </div>
+<script>
+    // If the URL has a hash, open and scroll to the matching <details> element
+    (function () {
+        const hash = window.location.hash.slice(1);
+        if (!hash) return;
+        const el = document.getElementById(hash);
+        if (el && el.tagName === 'DETAILS') {
+            el.open = true;
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    })();
+</script>
 </body>
 </html>
