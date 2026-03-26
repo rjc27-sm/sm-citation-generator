@@ -1,17 +1,17 @@
 # SM Citation Generator – Project Memory
 
 ## What this project is
-A single-file web app (`index.html`) that generates Australian Government Style Manual (AGSM) author–date citations. It has two tabs:
+A web app that generates Australian Government Style Manual (AGSM) author–date citations. It has two tabs:
 - **Quick lookup** – paste a DOI, ISBN, or URL; the app fetches metadata and generates a citation automatically
 - **Manual entry** – select a source type and fill in a form
 
-All logic, styles, and markup live in one file. The app is hosted on GitHub Pages from the `master` branch; pushing to `master` deploys immediately.
+The app is hosted on GitHub Pages from the `master` branch; pushing to `master` deploys immediately.
 
 ---
 
 ## Tech stack
 - Pure HTML/CSS/JS — no build step, no frameworks, no dependencies
-- Single file: `index.html`
+- Two files: `index.html` (the app) and `help.html` (FAQ page)
 - Deploy: `git push origin master` → live on GitHub Pages
 
 ---
@@ -21,7 +21,7 @@ All logic, styles, and markup live in one file. The app is hosted on GitHub Page
 | Section | What's in it |
 |---|---|
 | `<style>` | All CSS, including responsive breakpoints |
-| HTML body | Header, tabs, source type grid, form container, result area, footer |
+| HTML body | Header (with Help link), tabs, source type grid, form container, result area, footer |
 | `CONFIGURATION & STATE` | `state` object, `authorComponents`, `formState`, `TYPE_DISPLAY_NAMES` |
 | `SOURCE TYPE DEFINITIONS` | `SOURCE_FIELDS` object — field config for each type |
 | `UTILITY FUNCTIONS` | Author formatting, date helpers, `toSentenceCase`, `linkTitle`, etc. |
@@ -51,9 +51,9 @@ Each type has:
 | `book` | Book | `formatBook` | italics | year | |
 | `chapter` | Book chapter | `formatBookChapter` | single quotes | year | Has editor component |
 | `website` | Webpage | `formatWebsite` | italics | year | accessed date |
-| `report` | Govt report | `formatReport` | italics | year | accessed date, repeats agency short name |
+| `report` | Govt report | `formatReport` | italics | year | accessed date; repeats agency short name; supports 'Unpublished' |
 | `newspaper` | Newspaper | `formatNewspaper` | single quotes | full date | accessed date only if URL present |
-| `dataset` | Data set | `formatDataset` | italics | year | `[data set]` outside link; accessed date |
+| `dataset` | Data set | `formatDataset` | italics | year | `[data set]` outside link; accessed date; supports 'Unpublished' |
 | `mediarelease` | Media release | `formatMediaRelease` | italics | full date | `[media release]` outside link; accessed date only if URL present |
 
 ### Adding a new source type — checklist
@@ -73,14 +73,17 @@ Each type has:
 |---|---|---|
 | `id` | string | Field key; also becomes the HTML input ID suffix (`field-{type}-{id}`) |
 | `label` | string | Label shown in the form |
+| `type` | string | Omit for standard text input; `'checkbox'` renders a checkbox control |
 | `required` | boolean | Adds ` *` to label |
-| `sentenceCase` | boolean | Shows the "Convert to sentence case" button |
+| `sentenceCase` | boolean | Shows the 'Convert to sentence case' button |
 | `half` | boolean | Field takes half the row width (pairs with the next `half` field) |
 | `placeholder` | string | Input placeholder |
 | `helpText` | string | Small grey text below the input |
 | `defaultValue` | string | Pre-fills the input if no saved value exists |
 
 Special marker: `{ id: '_editors', label: '__editors__' }` — tells `buildForm` to insert the editor author component at that position (used in `chapter`).
+
+**Checkbox fields:** `buildFieldHtml` detects `field.type === 'checkbox'` and renders a `<div class="checkbox-field">` containing the input and an inline label. `collectFormData` and `saveFormState` use `el.checked` (boolean) rather than `el.value` for checkbox elements.
 
 ---
 
@@ -112,7 +115,7 @@ State is stored in `authorComponents[containerId]`:
 - In-text: 1 author → family name; 2 → `Family and Family`; 3+ → `Family et al.`
 
 **Paste & parse:**
-- The "Paste author list" `<details>` accepts comma, semicolon, ampersand, or newline-separated names in natural or reversed order
+- The 'Paste author list' `<details>` accepts comma, semicolon, ampersand, or newline-separated names in natural or reversed order
 - Strips affiliation numbers, ORCID URLs, and credential suffixes (MD, PhD, etc.)
 
 ---
@@ -125,9 +128,23 @@ Input is classified by `detectInputType()` as `doi`, `isbn`, `url`, or `unknown`
 |---|---|---|
 | DOI | CrossRef (`api.crossref.org`) | Returns structured metadata; maps to source type via `mapCrossRefType()` |
 | ISBN | Open Library → Google Books (fallback) | Open Library tried first; Google Books used if not found |
-| URL | `fetchPageTitle()` via `allorigins.win` proxy | Grabs H1 or `<title>` from the page; `suggestTypeFromURL()` picks website vs newspaper; `lookupGovAuOrg()` tries to match a gov.au body |
+| URL | `fetchPageTitle()` — three strategies (see below) | `suggestTypeFromURL()` picks source type; `lookupGovAuOrg()` tries to match a gov.au body |
 
-After lookup, `mapLookupToFormData()` maps API response fields to form field IDs, and the "Edit details" button lets the user correct the prefilled form.
+After lookup, `mapLookupToFormData()` maps API response fields to form field IDs, and the 'Edit details' button lets the user correct the prefilled form.
+
+### `fetchPageTitle(url)` — three-strategy title fetch
+
+Returns `{ title, isHint }` or `null` if all strategies fail.
+
+1. **allorigins proxy** — fetches raw HTML and checks `og:title`, `twitter:title`, `<h1>`, then `<title>` (strips trailing site-name suffixes from `<title>`). 8-second timeout.
+2. **Jina AI reader** (`r.jina.ai`) — fully renders the page including JavaScript and parses `Title:` from the markdown response. Useful for JS-rendered pages blocked by strategy 1. 10-second timeout.
+3. **URL slug heuristic** — last resort; infers a title from the URL path segments (skips pure numbers, very short segments, and 4-digit years). Sets `isHint: true` to flag the result for manual review.
+
+When `isHint` is true, a 'Title inferred from URL — please verify.' help-text message is shown under the title field, and the status notice explains the inference. A 'Why didn't this work?' link points to the relevant FAQ anchor in `help.html`.
+
+### AIHW URL special-casing
+
+If the pasted URL hostname is `aihw.gov.au`, `suggestTypeFromURL()` returns `'report'` (Govt report) rather than `'website'`. AIHW pages are protected by Cloudflare, which blocks both the allorigins proxy and the Jina AI renderer, so the title fetch will always fall through to the slug heuristic.
 
 ---
 
@@ -147,8 +164,8 @@ Used during URL lookup to pre-fill the org author fields.
 
 All formatters return `{ html, plain, year, intext }`:
 - `html` — HTML string with `<em>`, `<a>`, etc.
-- `plain` — `html` with all tags stripped (for "Copy plain text")
-- `year` — four-digit year string or `'n.d.'`, used for in-text citations
+- `plain` — `html` with all tags stripped (for 'Copy plain text')
+- `year` — four-digit year string, `'n.d.'`, or `'unpublished'` (report/dataset only)
 - `intext` — two-item array: `['Author (Year)', '(Author Year)']`
 
 **Key utilities used inside formatters:**
@@ -156,7 +173,7 @@ All formatters return `{ html, plain, year, intext }`:
 | Function | What it does |
 |---|---|
 | `linkTitle(titleHtml, data)` | Wraps `titleHtml` in `<a href>` if DOI or URL present; DOI takes priority |
-| `formatWebsiteName(name)` | Appends ` website` if name doesn't already end with "website" |
+| `formatWebsiteName(name)` | Appends ` website` if name doesn't already end with 'website' |
 | `formatDOI(doi)` | Returns `doi:xxxxx` formatted as a hyperlink |
 | `formatEdition(n)` | `2` → `2nd edn`, `3` → `3rd edn`, etc. |
 | `formatPageRange(pages)` | Converts hyphens to en dashes in page ranges |
@@ -170,6 +187,12 @@ const linkedTitle = linkTitle(`<em>${data.title}</em>`, data);
 parts.push(`${linkedTitle} [data set]`);
 ```
 
+**Unpublished sources (`report` and `dataset`):** both formatters check `data.unpublished` first:
+```js
+const year = data.unpublished ? 'unpublished' : (data.year || 'n.d.');
+```
+This renders as e.g. `White N and Jackson D (unpublished) Report title, ...`
+
 ---
 
 ## `toSentenceCase(title)`
@@ -177,7 +200,7 @@ parts.push(`${linkedTitle} [data set]`);
 - Lowercases all words except the first
 - Preserves ALL-CAPS acronyms of 2+ characters (e.g. `UNESCO`, `ABS`)
 - Does **not** capitalise after a colon — words following a colon are treated like any other mid-title word and lowercased
-- Triggered by the "Convert to sentence case" button (present on fields with `sentenceCase: true`)
+- Triggered by the 'Convert to sentence case' button (present on fields with `sentenceCase: true`)
 
 ---
 
@@ -185,9 +208,21 @@ parts.push(`${linkedTitle} [data set]`);
 
 - `buildForm(sourceType, prefillData)` — renders the author component(s) and all fields into `#manual-form`
 - Field IDs follow the pattern `field-{sourceType}-{fieldId}` (e.g. `field-journal-title`)
-- `saveFormState(type)` — called before switching source types; snapshots all field values and author state into `formState[type]`
+- `wrapHalfRow(items)` — always used for half-field pairs (both 1-item and 2-item cases), wrapping each item in `<div class="form-field">` so label and input stay together within the grid cell
+- `saveFormState(type)` — called before switching source types; snapshots all field values (using `el.checked` for checkboxes) and author state into `formState[type]`
 - `seedFormState(fromType, toType)` — called after switching; if the new type has never been visited (`formState[toType]` is undefined), copies matching field IDs and author state from the previous type's saved state so the user doesn't lose common data (title, URL, access date, etc.) when switching to a new type for the first time
 - `formState` persists in memory for the page session so switching types and back doesn't lose data
+
+---
+
+## Help page (`help.html`)
+
+A separate FAQ page linked from the top-right corner of the app header. Organised into three accordion sections:
+- **Quick lookup** — covers URL title fetch behaviour (including the three-strategy approach and Cloudflare), DOI/ISBN lookup failures
+- **Filling in the form** — author entry, org authors, sentence case, n.d., date formats
+- **Copying and using citations** — copy modes, in-text citations, Word/Google Docs pasting
+
+Inline contextual nudges in the app link directly to anchors within `help.html` (e.g. `help.html#url-title`) so users land on the relevant open section. The `<details>` element for the linked section must have the matching `id` attribute so the anchor resolves correctly.
 
 ---
 
@@ -211,7 +246,8 @@ parts.push(`${linkedTitle} [data set]`);
 ## Style & language conventions
 
 - **Punctuation:** en dashes (–) in all user-facing text; em dashes (—) may appear in code comments only
-- **"Data set"** is always two words in user-facing text (labels, citation output); the internal type key is `dataset` (one word)
+- **Quotation marks:** single quotes in all user-facing text (labels, help text, FAQ copy); double quotes in HTML attributes and JS strings only
+- **'Data set'** is always two words in user-facing text (labels, citation output); the internal type key is `dataset` (one word)
 - **Date format:** `D Month YYYY` throughout (e.g. `4 January 2020`); no leading zero on day
 - **Year fallback:** blank year fields display as `n.d.`
 - **Accessed date:** auto-fills with today's date if the field is blank at generation time
@@ -224,3 +260,5 @@ parts.push(`${linkedTitle} [data set]`);
 - The `fullDate` auto-formatter is a delegated blur listener that checks `id.endsWith('-fullDate')` — it applies automatically to any source type that has a `fullDate` field (currently `newspaper` and `mediarelease`)
 - `TYPE_DISPLAY_NAMES` is currently only populated for the original six types; it is used in status messages during lookup — update it if adding new types that can be reached via the lookup tab
 - The `mapLookupToFormData()` switch only has cases for the original six types — the two newer types (`dataset`, `mediarelease`) cannot currently be reached via the Quick lookup tab
+- The `unpublished` checkbox disables the year field via a delegated `change` listener on `#manual-form` — this is wired up in the `DOMContentLoaded` block, not inline in the field HTML
+- Half-row field pairs must always use `wrapHalfRow()` — placing raw `buildFieldHtml` output directly into a `form-row` grid without a wrapper div causes the label and input to become separate grid cells
