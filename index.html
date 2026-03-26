@@ -1103,6 +1103,7 @@
     function suggestTypeFromURL(url) {
         try {
             const hostname = new URL(url).hostname.toLowerCase();
+            if (hostname === 'aihw.gov.au' || hostname.endsWith('.aihw.gov.au')) return 'report';
             if (hostname.endsWith('.gov.au') || hostname.endsWith('.gov')) return 'website';
             const newsDomains = [
                 'abc.net.au','sbs.com.au','smh.com.au','theaustralian.com.au',
