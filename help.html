@@ -182,7 +182,8 @@
 
         <main>
             <h2 style="font-size:20px;font-weight:600;margin:0 0 8px 0;color:#1d1d1d;border:none;padding:0;">Help</h2>
-            <p style="font-size:14px;color:#374151;margin:0 0 28px 0;">Got a question about the citation generator? Check here for answers first. If your question isn't answered here, please use the <a href="https://forms.office.com/Pages/ResponsePage.aspx?id=CzcK22S1RUCEh5b_lwUSwHlJFHEe3VtHiDghW-pGfWpUNVRSVkVKWDkyOTdIWkVOTk5NSTFJMFpWTS4u" target="_blank" rel="noopener">feedback form</a> to submit your question or feedback.</p>
+            <p style="font-size:14px;color:#374151;margin:0 0 28px 0;">Got a question about the citation generator? Check here for answers first. </p>
+<p>If your question isn't answered here, please use the <a href="https://forms.office.com/Pages/ResponsePage.aspx?id=CzcK22S1RUCEh5b_lwUSwHlJFHEe3VtHiDghW-pGfWpUNVRSVkVKWDkyOTdIWkVOTk5NSTFJMFpWTS4u" target="_blank" rel="noopener">feedback form</a> to submit your question or feedback. This tool is early in its development and your feedback will help make it better.</p>
 
             <!-- ===== QUICK LOOKUP ===== -->
             <div class="faq-section">
@@ -191,13 +192,13 @@
                 <details>
                     <summary>Why didn't the URL lookup fill in the page title?</summary>
                     <div class="faq-answer">
-                        <p>The tool attempts to fetch the page title through a third-party proxy service. This often fails because:</p>
-                        <ul>
-                            <li>many websites block external requests of this kind</li>
-                            <li>the page content is rendered by JavaScript, and the proxy only retrieves the raw HTML (so it sees a blank page)</li>
-                            <li>the page title doesn't match the article headline.</li>
-                        </ul>
-                        <p>When the fetch fails or times out, the title field is left blank. Enter the title manually – copying it from the page itself is the most reliable approach.</p>
+                        <p>The tool tries 3 methods to retrieve the title:</p>
+                        <ol>
+                            <li>It fetches the raw HTML and looks for embedded metadata (Open Graph tags), which most modern sites include for social sharing.</li>
+                            <li>If that finds nothing, it uses a second service that fully renders the page including JavaScript.</li>
+                            <li>If both fetches fail, it infers a title from the words in the URL and flags it for you to verify.</li>
+                        </ol>
+                        <p>Even so, some pages can't be retrieved (for example, paywalled content or pages behind a login). If the title field is still blank or incorrect, you will need to copy the title from the page itself and paste it in.</p>
                     </div>
                 </details>
 
@@ -224,7 +225,7 @@
                 <details>
                     <summary>My DOI wasn't found – what should I do?</summary>
                     <div class="faq-answer">
-                        <p>DOIs are looked up via CrossRef. If the item isn't indexed in CrossRef (common for some government publications and preprints), the lookup will fail.</p>
+                        <p>The tool looks up DOIs via CrossRef. If the item isn't indexed in CrossRef (common for some government publications and preprints), the lookup will fail.</p>
                         <p>Use the <strong>Manual entry</strong> tab and enter the details by hand. You can still include the DOI in the DOI field – it will be hyperlinked in the citation.</p>
                     </div>
                 </details>
@@ -232,7 +233,7 @@
                 <details>
                     <summary>My ISBN wasn't found – what should I do?</summary>
                     <div class="faq-answer">
-                        <p>ISBNs are looked up via Open Library, then Google Books as a fallback. Government reports, specialist publications, and older books are often not indexed in either database.</p>
+                        <p>The tool looks up ISBNs via Open Library, then Google Books as a fallback. Government reports, specialist publications, and older books are often not indexed in either database.</p>
                         <p>Use the <strong>Manual entry</strong> tab instead.</p>
                     </div>
                 </details>
@@ -253,36 +254,36 @@
                     <summary>How do I enter author names?</summary>
                     <div class="faq-answer">
                         <p>Click <strong>+ Add author</strong> and fill in the given name(s) and family name in the separate fields. The tool formats the name to Style Manual conventions automatically (family name + initials, no full stops).</p>
-                        <p>For a long author list, use <strong>Paste author list</strong> – paste names separated by commas, semicolons, ampersands, or line breaks, in any order (e.g. "Smith J, Jones A" or "Jane Smith; Alex Jones"). The tool will strip credentials (PhD, MD, etc.) and affiliation numbers.</p>
+                        <p>For a long author list, use <strong>Paste author list</strong>. Paste names separated by commas, semicolons, ampersands, or line breaks, in any order (e.g. 'Smith J, Jones A' or 'Jane Smith; Alex Jones'). The tool will strip credentials (PhD, MD and so on) and affiliation numbers.</p>
                     </div>
                 </details>
 
                 <details>
                     <summary>How do I cite a source where the author is an organisation?</summary>
                     <div class="faq-answer">
-                        <p>Select <strong>Organisation</strong> in the Author field toggle (available for Webpage, Govt report, Data set and Media release types). Enter the abbreviation (e.g. AIHW) and the full name (e.g. Australian Institute of Health and Welfare) in the two fields.</p>
+                        <p>Select <strong>Organisation</strong> in the Author field toggle (available for Webpage, Govt report, Data set and Media release types). Enter the abbreviation and the full name in the 2 fields.</p>
                         <p>If the organisation has no abbreviation, leave the abbreviation field blank and enter the full name only.</p>
                     </div>
                 </details>
 
                 <details>
-                    <summary>What is "sentence case" and should I use it?</summary>
+                    <summary>What is 'sentence case' and should I use it?</summary>
                     <div class="faq-answer">
                         <p>The Style Manual requires titles in sentence case: only the first word and proper nouns are capitalised. If the title you've copied is in title case (Every Word Capitalised), click <strong>Convert to sentence case</strong> to apply the conversion automatically.</p>
-                        <p>The tool preserves ALL-CAPS acronyms (e.g. ABS, UNESCO, NDIS). Always review the result – proper nouns such as place names and people's names won't be re-capitalised automatically and may need correcting by hand.</p>
+                        <p>The tool preserves ALL-CAPS acronyms (such as ABS, UNESCO, NDIS). Always review the result. Proper nouns such as place names and people's names won't be re-capitalised automatically and you may need to correct them manually.</p>
                     </div>
                 </details>
 
                 <details>
-                    <summary>The citation shows "n.d." instead of a year – why?</summary>
+                    <summary>The citation shows 'n.d.' instead of a year – why?</summary>
                     <div class="faq-answer">
-                        <p>"n.d." (no date) is the Style Manual convention when a publication year is not available. It appears when the Year field is left blank.</p>
+                        <p>'n.d.' (no date) is the Style Manual convention when a publication year is not available. It appears when the Year field is left blank.</p>
                         <p>If the source has a year, enter it in the Year field and regenerate the citation.</p>
                     </div>
                 </details>
 
                 <details>
-                    <summary>How do I enter a date for a newspaper article or media release?</summary>
+                    <summary>How do I enter a date for a news article or media release?</summary>
                     <div class="faq-answer">
                         <p>These source types use a full publication date rather than just a year. Enter it in any of these formats – the tool will convert it automatically when you leave the field:</p>
                         <ul>
@@ -299,17 +300,17 @@
                 <h2>Copying and using citations</h2>
 
                 <details>
-                    <summary>What is the difference between "Copy plain text" and "Copy with formatting"?</summary>
+                    <summary>What is the difference between 'Copy plain text' and 'Copy with formatting'?</summary>
                     <div class="faq-answer">
-                        <p><strong>Copy with formatting</strong> copies the citation with italics intact, so it pastes correctly into Word and Google Docs.</p>
-                        <p><strong>Copy plain text</strong> strips all formatting. Use this for plain-text environments such as email, Teams messages, or systems that don't support rich text.</p>
+                        <p><strong>Copy with formatting</strong> copies the citation with italics and hyperlink intact, so it pastes correctly into rich-text environments such as Word and Google Docs.</p>
+                        <p><strong>Copy plain text</strong> strips all formatting. Use this for pasting into systems that don't support rich text.</p>
                     </div>
                 </details>
 
                 <details>
                     <summary>How do I copy an in-text citation?</summary>
                     <div class="faq-answer">
-                        <p>Below the reference list entry, two in-text citation options are shown – one with the author outside the parentheses and one with the author inside. Click either one to copy it.</p>
+                        <p>Below the reference list entry, you can see 2 in-text citation options, one with the author outside the parentheses and one with the author inside. Click the format you need to copy it.</p>
                     </div>
                 </details>
 
