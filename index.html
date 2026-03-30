@@ -2586,11 +2586,11 @@
                 // Set loading placeholder on the title field while fetching
                 const titleField = document.getElementById(`field-${suggestedType}-title`);
                 if (titleField && !titleField.value) {
-                    titleField.placeholder = 'Fetching page title\u2026';
+                    titleField.placeholder = 'Trying to fetch page title\u2026';
                 }
 
                 showUrlNotice(
-                    `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Fetching page title\u2026`
+                    `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Trying to fetch page title\u2026`
                 );
 
                 // Try to fetch the page title (best effort, fails gracefully)
