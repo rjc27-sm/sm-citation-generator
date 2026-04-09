@@ -730,6 +730,8 @@
                     <button class="source-type-btn" data-type="newspaper" role="radio" aria-checked="false" type="button">Newspaper</button>
                     <button class="source-type-btn" data-type="dataset" role="radio" aria-checked="false" type="button">Data set</button>
                     <button class="source-type-btn" data-type="mediarelease" role="radio" aria-checked="false" type="button">Media release</button>
+                    <button class="source-type-btn" data-type="conferencepaper" role="radio" aria-checked="false" type="button">Conference paper</button>
+                    <button class="source-type-btn" data-type="thesis" role="radio" aria-checked="false" type="button">Thesis</button>
                 </div>
                 <div id="url-notice" class="status" role="status" aria-live="polite"></div>
                 <div id="manual-form"></div>
@@ -861,6 +863,24 @@
             { id: 'organisation', label: 'Issuing organisation', placeholder: 'e.g. ACT Government' },
             { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 5 February 2020' },
             { id: 'url', label: 'URL' },
+        ],
+        conferencepaper: [
+            { id: 'fullDate', label: 'Date', required: true, placeholder: 'e.g. 9\u201312 May 2007', helpText: 'Enter as D Month YYYY, D/M/YYYY, or Month D, YYYY \u2013 auto-converted on leaving field; for date ranges, enter as written' },
+            { id: 'unpublished', label: 'Unpublished', type: 'checkbox', half: true },
+            { id: 'title', label: 'Paper title', required: true, sentenceCase: true },
+            { id: 'conference', label: 'Conference name', required: true },
+            { id: 'place', label: 'Place' },
+            { id: 'url', label: 'URL' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 3 May 2019' },
+        ],
+        thesis: [
+            { id: 'title', label: 'Thesis title', required: true, sentenceCase: true },
+            { id: 'year', label: 'Year', half: true, placeholder: 'e.g. 2013' },
+            { id: 'unpublished', label: 'Unpublished', type: 'checkbox', half: true },
+            { id: 'thesisType', label: 'Thesis type', placeholder: 'e.g. master\u2019s thesis' },
+            { id: 'university', label: 'University', required: true },
+            { id: 'url', label: 'URL' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 5 May 2017' },
         ],
     };
 
@@ -1312,6 +1332,151 @@
         'aph.gov.au':                        { full: 'Australian Parliament House', abbrev: 'APH' },
         'pm.gov.au':                         { full: 'Prime Minister of Australia', abbrev: '' },
         'australia.gov.au':                  { full: 'Australian Government', abbrev: '' },
+        'act.policing.gov.au':               { full: 'ACT Policing', abbrev: '' },
+        'agrifutures.com.au':                { full: 'Rural Industries Research and Development Corporation', abbrev: 'AgriFutures' },
+        'airforce.gov.au':                   { full: 'Royal Australian Air Force Veterans\' Residences Trust Fund', abbrev: 'RAAFVRTF' },
+        'ani.com.au':                        { full: 'Australian Naval Infrastructure Pty Ltd', abbrev: 'ANI' },
+        'anindilyakwa.com.au':               { full: 'Anindilyakwa Land Council', abbrev: 'ALC' },
+        'armyrtf.com.au':                    { full: 'Australian Military Forces Relief Trust Fund', abbrev: 'AMFRTF' },
+        'artc.com.au':                       { full: 'Australian Rail Track Corporation Limited', abbrev: 'ARTC' },
+        'asc.com.au':                        { full: 'ASC Pty Ltd', abbrev: 'ASC' },
+        'asf.org.au':                        { full: 'Australian Sports Foundation Limited', abbrev: 'ASF' },
+        'bundanon.com.au':                   { full: 'Bundanon Trust', abbrev: '' },
+        'clc.org.au':                        { full: 'Central Land Council', abbrev: 'CLC' },
+        'coallsl.com.au':                    { full: 'Coal Mining Industry (Long Service Leave Funding) Corporation', abbrev: 'COALLSL' },
+        'crdc.com.au':                       { full: 'Cotton Research and Development Corporation', abbrev: 'CRDC' },
+        'frdc.com.au':                       { full: 'Fisheries Research and Development Corporation', abbrev: 'FRDC' },
+        'grdc.com.au':                       { full: 'Grains Research and Development Corporation', abbrev: 'GRDC' },
+        'nbnco.com.au':                      { full: 'NBN Co Limited', abbrev: 'NBN' },
+        'ncc.gov.au':                        { full: 'National Competition Council', abbrev: 'NCC' },
+        'nationalintermodal.com.au':         { full: 'National Intermodal Corporation Limited', abbrev: 'NIC' },
+        'nlc.org.au':                        { full: 'Northern Land Council', abbrev: 'NLC' },
+        'quitnow.gov.au':                    { full: 'Australian National Preventive Health Agency', abbrev: 'ANPHA' },
+        'raafholidays.com.au':               { full: 'RAAF Welfare Recreational Company', abbrev: 'RAAFWRC' },
+        'raafwelfaretrustfund.gov.au':       { full: 'Royal Australian Air Force Welfare Trust Fund', abbrev: 'RAAFWTF' },
+        'sbs.com.au':                        { full: 'Special Broadcasting Service Corporation', abbrev: 'SBS' },
+        'snowyhydro.com.au':                 { full: 'Snowy Hydro Ltd', abbrev: '' },
+        'thenavysanchorage.com.au':          { full: 'Royal Australian Navy Central Canteens Board', abbrev: 'RANC' },
+        'tourism.australia.com':             { full: 'Tourism Australia', abbrev: 'TA' },
+        'wsiairport.com.au':                 { full: 'WSA Co Limited', abbrev: 'WSA' },
+        'act.gov.au':                        { full: 'Australian Capital Territory Government', abbrev: 'ACT Gov' },
+        'accesscanberra.act.gov.au':         { full: 'Access Canberra', abbrev: '' },
+        'bsss.act.edu.au':                   { full: 'ACT Board of Senior Secondary Studies', abbrev: 'BSSS ACT' },
+        'cmtedd.act.gov.au':                 { full: 'ACT Chief Minister, Treasury and Economic Development Directorate', abbrev: 'CMTEDD' },
+        'education.act.gov.au':              { full: 'ACT Education Directorate', abbrev: 'ACT Education' },
+        'elections.act.gov.au':              { full: 'ACT Electoral Commission', abbrev: 'ACTEC' },
+        'esa.act.gov.au':                    { full: 'ACT Emergency Services Agency', abbrev: 'ESA ACT' },
+        'health.act.gov.au':                 { full: 'ACT Health Directorate', abbrev: 'ACT Health' },
+        'integritycommission.act.gov.au':    { full: 'ACT Integrity Commission', abbrev: 'ACT IC' },
+        'ombudsman.act.gov.au':              { full: 'ACT Ombudsman', abbrev: '' },
+        'revenue.act.gov.au':                { full: 'ACT Revenue Office', abbrev: 'ACT Revenue' },
+        'tccs.act.gov.au':                   { full: 'Transport Canberra and City Services', abbrev: 'TCCS' },
+        'worksafe.act.gov.au':               { full: 'WorkSafe ACT', abbrev: '' },
+        'nsw.gov.au':                        { full: 'NSW Government', abbrev: '' },
+        'dpc.nsw.gov.au':                    { full: 'NSW Department of Premier and Cabinet', abbrev: 'DPC NSW' },
+        'education.nsw.gov.au':              { full: 'NSW Department of Education', abbrev: 'DoE NSW' },
+        'elections.nsw.gov.au':              { full: 'NSW Electoral Commission', abbrev: 'NSWEC' },
+        'epa.nsw.gov.au':                    { full: 'NSW Environment Protection Authority', abbrev: 'NSW EPA' },
+        'fairtrading.nsw.gov.au':            { full: 'NSW Fair Trading', abbrev: 'Fair Trading NSW' },
+        'fire.nsw.gov.au':                   { full: 'Fire and Rescue NSW', abbrev: 'FRNSW' },
+        'health.nsw.gov.au':                 { full: 'NSW Health', abbrev: '' },
+        'icac.nsw.gov.au':                   { full: 'Independent Commission Against Corruption NSW', abbrev: 'ICAC' },
+        'ipcn.nsw.gov.au':                   { full: 'Independent Planning Commission NSW', abbrev: 'IPC NSW' },
+        'ombo.nsw.gov.au':                   { full: 'NSW Ombudsman', abbrev: '' },
+        'planning.nsw.gov.au':               { full: 'NSW Planning', abbrev: '' },
+        'police.nsw.gov.au':                 { full: 'NSW Police Force', abbrev: 'NSWPF' },
+        'revenue.nsw.gov.au':                { full: 'Revenue NSW', abbrev: '' },
+        'rfs.nsw.gov.au':                    { full: 'NSW Rural Fire Service', abbrev: 'NSW RFS' },
+        'service.nsw.gov.au':                { full: 'Service NSW', abbrev: '' },
+        'ses.nsw.gov.au':                    { full: 'NSW State Emergency Service', abbrev: 'NSW SES' },
+        'transport.nsw.gov.au':              { full: 'Transport for NSW', abbrev: '' },
+        'treasury.nsw.gov.au':               { full: 'NSW Treasury', abbrev: '' },
+        'nt.gov.au':                         { full: 'Northern Territory Government', abbrev: 'NT Gov' },
+        'consumeraffairs.nt.gov.au':         { full: 'Consumer Affairs Northern Territory', abbrev: 'CA NT' },
+        'dcm.nt.gov.au':                     { full: 'Northern Territory Department of the Chief Minister and Cabinet', abbrev: 'DCMC NT' },
+        'dipl.nt.gov.au':                    { full: 'Northern Territory Department of Infrastructure, Planning and Logistics', abbrev: 'DIPL NT' },
+        'education.nt.gov.au':               { full: 'Northern Territory Department of Education', abbrev: 'DoE NT' },
+        'health.nt.gov.au':                  { full: 'Northern Territory Department of Health', abbrev: 'DoH NT' },
+        'icac.nt.gov.au':                    { full: 'Independent Commissioner Against Corruption Northern Territory', abbrev: 'ICAC NT' },
+        'ntec.nt.gov.au':                    { full: 'Northern Territory Electoral Commission', abbrev: 'NTEC' },
+        'ombudsman.nt.gov.au':               { full: 'Ombudsman Northern Territory', abbrev: 'NT Ombudsman' },
+        'pfes.nt.gov.au':                    { full: 'Northern Territory Police, Fire and Emergency Services', abbrev: 'NTPFES' },
+        'treasury.nt.gov.au':                { full: 'Northern Territory Department of Treasury and Finance', abbrev: 'DTF NT' },
+        'worksafe.nt.gov.au':                { full: 'NT WorkSafe', abbrev: '' },
+        'qld.gov.au':                        { full: 'Queensland Government', abbrev: 'Qld Gov' },
+        'ccc.qld.gov.au':                    { full: 'Crime and Corruption Commission Queensland', abbrev: 'CCC Qld' },
+        'ecq.qld.gov.au':                    { full: 'Electoral Commission of Queensland', abbrev: 'ECQ' },
+        'education.qld.gov.au':              { full: 'Queensland Department of Education', abbrev: 'DoE Qld' },
+        'fire.qld.gov.au':                   { full: 'Queensland Fire Department', abbrev: 'QFD' },
+        'health.qld.gov.au':                 { full: 'Queensland Health', abbrev: 'Qld Health' },
+        'ombudsman.qld.gov.au':              { full: 'Queensland Ombudsman', abbrev: 'Qld Ombudsman' },
+        'police.qld.gov.au':                 { full: 'Queensland Police Service', abbrev: 'QPS' },
+        'premcab.qld.gov.au':                { full: 'Queensland Department of the Premier and Cabinet', abbrev: 'DPC Qld' },
+        'qcaa.qld.edu.au':                   { full: 'Queensland Curriculum and Assessment Authority', abbrev: 'QCAA' },
+        'qro.qld.gov.au':                    { full: 'Queensland Revenue Office', abbrev: 'QRO' },
+        'tmr.qld.gov.au':                    { full: 'Department of Transport and Main Roads Queensland', abbrev: 'TMR Qld' },
+        'treasury.qld.gov.au':               { full: 'Queensland Treasury', abbrev: 'Qld Treasury' },
+        'worksafe.qld.gov.au':               { full: 'WorkCover Queensland', abbrev: 'WorkCover Qld' },
+        'sa.gov.au':                         { full: 'South Australian Government', abbrev: 'SA Gov' },
+        'cbs.sa.gov.au':                     { full: 'Consumer and Business Services South Australia', abbrev: 'CBS SA' },
+        'cfs.sa.gov.au':                     { full: 'South Australian Country Fire Service', abbrev: 'CFS SA' },
+        'dit.sa.gov.au':                     { full: 'Department for Infrastructure and Transport South Australia', abbrev: 'DIT SA' },
+        'dpc.sa.gov.au':                     { full: 'South Australian Department of the Premier and Cabinet', abbrev: 'DPC SA' },
+        'ecsa.sa.gov.au':                    { full: 'Electoral Commission of South Australia', abbrev: 'ECSA' },
+        'education.sa.gov.au':               { full: 'Department for Education South Australia', abbrev: 'DfE SA' },
+        'icac.sa.gov.au':                    { full: 'Independent Commissioner Against Corruption South Australia', abbrev: 'ICAC SA' },
+        'mfs.sa.gov.au':                     { full: 'South Australian Metropolitan Fire Service', abbrev: 'MFS SA' },
+        'ombudsman.sa.gov.au':               { full: 'Ombudsman South Australia', abbrev: 'Ombudsman SA' },
+        'police.sa.gov.au':                  { full: 'South Australia Police', abbrev: 'SAPOL' },
+        'revenuesa.sa.gov.au':               { full: 'RevenueSA', abbrev: '' },
+        'sahealth.sa.gov.au':                { full: 'SA Health', abbrev: '' },
+        'ses.sa.gov.au':                     { full: 'South Australian State Emergency Service', abbrev: 'SA SES' },
+        'treasury.sa.gov.au':                { full: 'Department of Treasury and Finance South Australia', abbrev: 'DTF SA' },
+        'tas.gov.au':                        { full: 'Tasmanian Government', abbrev: '' },
+        'cbos.tas.gov.au':                   { full: 'Consumer, Building and Occupational Services Tasmania', abbrev: 'CBOS Tas' },
+        'decyp.tas.gov.au':                  { full: 'Tasmanian Department for Education, Children and Young People', abbrev: 'DECYP Tas' },
+        'dpac.tas.gov.au':                   { full: 'Tasmanian Department of Premier and Cabinet', abbrev: 'DPAC Tas' },
+        'fire.tas.gov.au':                   { full: 'Tasmania Fire Service', abbrev: 'TFS' },
+        'health.tas.gov.au':                 { full: 'Tasmanian Department of Health', abbrev: 'DoH Tas' },
+        'ombudsman.tas.gov.au':              { full: 'Tasmanian Ombudsman', abbrev: 'Tas Ombudsman' },
+        'police.tas.gov.au':                 { full: 'Tasmania Police', abbrev: '' },
+        'ses.tas.gov.au':                    { full: 'Tasmania State Emergency Service', abbrev: 'Tas SES' },
+        'sro.tas.gov.au':                    { full: 'State Revenue Office Tasmania', abbrev: 'SRO Tas' },
+        'stategrowth.tas.gov.au':            { full: 'Tasmanian Department of State Growth', abbrev: 'DSG Tas' },
+        'tasc.tas.gov.au':                   { full: 'Tasmanian Assessment, Standards and Certification', abbrev: 'TASC' },
+        'tec.tas.gov.au':                    { full: 'Tasmanian Electoral Commission', abbrev: 'TEC' },
+        'treasury.tas.gov.au':               { full: 'Tasmanian Department of Treasury and Finance', abbrev: 'DTF Tas' },
+        'worksafe.tas.gov.au':               { full: 'WorkSafe Tasmania', abbrev: '' },
+        'vic.gov.au':                        { full: 'Victorian Government', abbrev: 'Vic Gov' },
+        'cfa.vic.gov.au':                    { full: 'Country Fire Authority', abbrev: 'CFA' },
+        'consumer.vic.gov.au':               { full: 'Consumer Affairs Victoria', abbrev: 'CAV' },
+        'dpc.vic.gov.au':                    { full: 'Victorian Department of Premier and Cabinet', abbrev: 'DPC Vic' },
+        'dtf.vic.gov.au':                    { full: 'Victorian Department of Treasury and Finance', abbrev: 'DTF Vic' },
+        'education.vic.gov.au':              { full: 'Victorian Department of Education', abbrev: 'DoE Vic' },
+        'epa.vic.gov.au':                    { full: 'Environment Protection Authority Victoria', abbrev: 'EPA Vic' },
+        'frv.vic.gov.au':                    { full: 'Fire Rescue Victoria', abbrev: 'FRV' },
+        'ibac.vic.gov.au':                   { full: 'Independent Broad-based Anti-corruption Commission Victoria', abbrev: 'IBAC' },
+        'ombudsman.vic.gov.au':              { full: 'Victorian Ombudsman', abbrev: 'Vic Ombudsman' },
+        'police.vic.gov.au':                 { full: 'Victoria Police', abbrev: '' },
+        'service.vic.gov.au':                { full: 'Service Victoria', abbrev: '' },
+        'ses.vic.gov.au':                    { full: 'Victorian State Emergency Service', abbrev: 'VICSES' },
+        'sro.vic.gov.au':                    { full: 'State Revenue Office Victoria', abbrev: 'SRO Vic' },
+        'vcaa.vic.edu.au':                   { full: 'Victorian Curriculum and Assessment Authority', abbrev: 'VCAA' },
+        'vec.vic.gov.au':                    { full: 'Victorian Electoral Commission', abbrev: 'VEC' },
+        'worksafe.vic.gov.au':               { full: 'WorkSafe Victoria', abbrev: '' },
+        'wa.gov.au':                         { full: 'Western Australian Government', abbrev: 'WA Gov' },
+        'ccc.wa.gov.au':                     { full: 'Corruption and Crime Commission Western Australia', abbrev: 'CCC WA' },
+        'consumerprotection.wa.gov.au':      { full: 'Consumer Protection Western Australia', abbrev: 'CP WA' },
+        'dfes.wa.gov.au':                    { full: 'Department of Fire and Emergency Services Western Australia', abbrev: 'DFES WA' },
+        'dpc.wa.gov.au':                     { full: 'Western Australian Department of the Premier and Cabinet', abbrev: 'DPC WA' },
+        'education.wa.edu.au':               { full: 'Western Australian Department of Education', abbrev: 'DoE WA' },
+        'elections.wa.gov.au':               { full: 'Western Australian Electoral Commission', abbrev: 'WAEC' },
+        'ombudsman.wa.gov.au':               { full: 'Western Australian Ombudsman', abbrev: 'WA Ombudsman' },
+        'police.wa.gov.au':                  { full: 'Western Australia Police Force', abbrev: 'WAPF' },
+        'scsa.wa.edu.au':                    { full: 'School Curriculum and Standards Authority Western Australia', abbrev: 'SCSA WA' },
+        'transport.wa.gov.au':               { full: 'Western Australian Department of Transport', abbrev: 'DoT WA' },
+        'treasury.wa.gov.au':                { full: 'Western Australian Department of Treasury', abbrev: 'Treasury WA' },
+        'worksafe.wa.gov.au':                { full: 'WorkSafe Western Australia', abbrev: 'WorkSafe WA' },
     };
 
     /**
@@ -1908,6 +2073,71 @@
      * Main formatter dispatch. Takes a unified data object and routes
      * to the correct formatter based on sourceType.
      */
+    /**
+     * Conference paper – published:
+     * Author A (Day Month Year) 'Title' [conference presentation], Conference Name, Place, accessed Day Month Year.
+     * Conference paper – unpublished:
+     * Author A (Day Month Year) 'Title' [unpublished conference presentation], Conference Name, Place.
+     */
+    function formatConferencePaper(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const fullDate = data.fullDate || 'n.d.';
+        const year = (fullDate.match(/\d{4}/) || [])[0] || 'n.d.';
+
+        const descriptor = data.unpublished ? '[unpublished conference presentation]' : '[conference presentation]';
+        const linkedTitle = linkTitle(data.title, data);
+
+        let parts = [];
+        parts.push(`'${linkedTitle}' ${descriptor}`);
+        if (data.conference) parts.push(data.conference);
+        if (data.place) parts.push(data.place);
+        if (!data.unpublished) {
+            const accessDate = data.accessDate || getTodayFormatted();
+            parts.push(`accessed ${accessDate}`);
+        }
+
+        const body = parts.join(', ');
+        const html = `${authors} (${fullDate}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
+    /**
+     * Thesis – published:
+     * Author A (Year) Title [type of thesis], University, accessed Day Month Year.
+     * Thesis – unpublished:
+     * Author A (Year) Title [unpublished type of thesis], University, accessed Day Month Year.
+     */
+    function formatThesis(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const year = data.year || 'n.d.';
+        const accessDate = data.accessDate || getTodayFormatted();
+
+        const thesisType = data.thesisType || 'thesis';
+        const descriptor = data.unpublished ? `[unpublished ${thesisType}]` : `[${thesisType}]`;
+        const linkedTitle = linkTitle(`<em>${data.title}</em>`, data);
+
+        let parts = [];
+        parts.push(`${linkedTitle} ${descriptor}`);
+        if (data.university) parts.push(data.university);
+        parts.push(`accessed ${accessDate}`);
+
+        const body = parts.join(', ');
+        const html = `${authors} (${year}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
     function formatCitation(sourceType, rawData) {
         // Build the author display strings from the raw data
         const data = { ...rawData };
@@ -1928,8 +2158,10 @@
             case 'report':       return formatReport(data);
             case 'newspaper':    return formatNewspaper(data);
             case 'dataset':      return formatDataset(data);
-            case 'mediarelease': return formatMediaRelease(data);
-            default:             return formatBook(data);
+            case 'mediarelease':     return formatMediaRelease(data);
+            case 'conferencepaper':  return formatConferencePaper(data);
+            case 'thesis':           return formatThesis(data);
+            default:                 return formatBook(data);
         }
     }
 
@@ -2694,11 +2926,13 @@
             });
         });
 
-        // Unpublished checkbox — disable year field when ticked
+        // Unpublished checkbox — disable year field when ticked (report and dataset only)
         document.getElementById('manual-form').addEventListener('change', (e) => {
             if (e.target.type === 'checkbox' && e.target.id.endsWith('-unpublished')) {
-                const yearField = document.getElementById(`field-${state.sourceType}-year`);
-                if (yearField) yearField.disabled = e.target.checked;
+                if (['report', 'dataset'].includes(state.sourceType)) {
+                    const yearField = document.getElementById(`field-${state.sourceType}-year`);
+                    if (yearField) yearField.disabled = e.target.checked;
+                }
             }
         });
 
