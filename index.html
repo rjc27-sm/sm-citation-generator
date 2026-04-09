@@ -732,6 +732,7 @@
                     <button class="source-type-btn" data-type="mediarelease" role="radio" aria-checked="false" type="button">Media release</button>
                     <button class="source-type-btn" data-type="conferencepaper" role="radio" aria-checked="false" type="button">Conference paper</button>
                     <button class="source-type-btn" data-type="thesis" role="radio" aria-checked="false" type="button">Thesis</button>
+                    <button class="source-type-btn" data-type="legislation" role="radio" aria-checked="false" type="button">Legislation</button>
                 </div>
                 <div id="url-notice" class="status" role="status" aria-live="polite"></div>
                 <div id="manual-form"></div>
@@ -881,6 +882,15 @@
             { id: 'university', label: 'University', required: true },
             { id: 'url', label: 'URL' },
             { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 5 May 2017' },
+        ],
+        legislation: [
+            { id: 'title', label: 'Title', required: true,
+              placeholder: 'e.g. Major Bank Levy Act 2017',
+              helpText: 'Include the year as it appears in the title' },
+            { id: 'jurisdiction', label: 'Jurisdiction', half: true,
+              placeholder: 'e.g. Cth',
+              helpText: 'Cth, ACT, NSW, NT, Qld, SA, Tas, Vic or WA \u2014 omit if obvious from context' },
+            { id: 'url', label: 'URL' },
         ],
     };
 
@@ -2138,6 +2148,30 @@
         };
     }
 
+    /**
+     * Legislation (Acts and delegated legislation):
+     * Reference list: Title (Jurisdiction).  [roman type]
+     * In-text:        <em>Title</em> (Jurisdiction)
+     */
+    function formatLegislation(data) {
+        const title = data.title || '';
+        const jurisdiction = data.jurisdiction ? ` (${data.jurisdiction})` : '';
+
+        const linkedTitle = data.url
+            ? `<a href="${escAttr(data.url)}" target="_blank" rel="noopener">${title}</a>`
+            : title;
+        const html = `${linkedTitle}${jurisdiction}.`;
+        const plain = `${title}${jurisdiction}.`;
+
+        const intextTitle = `<em>${title}</em>${jurisdiction}`;
+        const intext = [intextTitle, `(${intextTitle})`];
+
+        const yearMatch = title.match(/\b(\d{4})\b/g);
+        const year = yearMatch ? yearMatch[yearMatch.length - 1] : '';
+
+        return { html, plain, year, intext };
+    }
+
     function formatCitation(sourceType, rawData) {
         // Build the author display strings from the raw data
         const data = { ...rawData };
@@ -2161,6 +2195,7 @@
             case 'mediarelease':     return formatMediaRelease(data);
             case 'conferencepaper':  return formatConferencePaper(data);
             case 'thesis':           return formatThesis(data);
+            case 'legislation':      return formatLegislation(data);
             default:                 return formatBook(data);
         }
     }
@@ -2366,8 +2401,10 @@
 
         let html = '';
 
-        // Author component placeholder
-        html += `<div class="author-component" id="ac-author"></div>`;
+        // Author component placeholder (not shown for legislation — no author)
+        if (sourceType !== 'legislation') {
+            html += `<div class="author-component" id="ac-author"></div>`;
+        }
 
         let halfBuffer = [];
 
@@ -2418,7 +2455,9 @@
             orgAbbrev: prefillData?.orgAbbrev || '',
             orgFull: prefillData?.orgFull || '',
         };
-        initAuthorComponent('ac-author', authorOpts);
+        if (sourceType !== 'legislation') {
+            initAuthorComponent('ac-author', authorOpts);
+        }
 
         // Initialise editor component for chapters
         if (sourceType === 'chapter') {
@@ -2476,8 +2515,10 @@
         const fields = SOURCE_FIELDS[st];
         const data = {};
 
-        // Author data
-        const authorData = getAuthorData('ac-author');
+        // Author data (legislation has no author component)
+        const authorData = document.getElementById('ac-author')
+            ? getAuthorData('ac-author')
+            : { authorMode: 'person', authors: [], orgAbbrev: '', orgFull: '' };
         Object.assign(data, authorData);
 
         // Editor data for chapters
@@ -2514,9 +2555,10 @@
 
         citationEl.innerHTML = result.html;
 
-        intextEl.innerHTML = result.intext.map(opt =>
-            `<button type="button" class="intext-option" data-text="${escAttr(opt)}">${escAttr(opt)}</button>`
-        ).join('');
+        intextEl.innerHTML = result.intext.map(opt => {
+            const plain = opt.replace(/<[^>]+>/g, '');
+            return `<button type="button" class="intext-option" data-text="${escAttr(plain)}" data-html="${escAttr(opt)}">${opt}</button>`;
+        }).join('');
 
         // Attach in-text copy handlers
         intextEl.querySelectorAll('.intext-option').forEach(btn => {
@@ -2526,7 +2568,7 @@
                     btn.textContent = 'Copied!';
                     setTimeout(() => {
                         btn.classList.remove('copied');
-                        btn.textContent = btn.dataset.text;
+                        btn.innerHTML = btn.dataset.html;
                     }, 1500);
                 });
             });
@@ -2681,12 +2723,14 @@
         if (!type || !SOURCE_FIELDS[type]) return;
         const saved = {};
 
-        // Save author component state
-        const authorData = getAuthorData('ac-author');
-        saved.authorMode = authorData.authorMode;
-        saved.authors = authorData.authors;
-        saved.orgAbbrev = authorData.orgAbbrev;
-        saved.orgFull = authorData.orgFull;
+        // Save author component state (legislation has no author component)
+        if (document.getElementById('ac-author')) {
+            const authorData = getAuthorData('ac-author');
+            saved.authorMode = authorData.authorMode;
+            saved.authors = authorData.authors;
+            saved.orgAbbrev = authorData.orgAbbrev;
+            saved.orgFull = authorData.orgFull;
+        }
 
         // Save editor state for chapters
         if (type === 'chapter') {
@@ -2940,14 +2984,16 @@
         document.getElementById('generate-btn').addEventListener('click', () => {
             const data = collectFormData();
 
-            // Validate: need at least an author
-            if (data.authorMode === 'person' && (!data.authors || data.authors.length === 0)) {
-                showStatus('Please enter at least one author.', 'error');
-                return;
-            }
-            if (data.authorMode === 'organisation' && !data.orgFull && !data.orgAbbrev) {
-                showStatus('Please enter the organisation name.', 'error');
-                return;
+            // Validate: need at least an author (not applicable to legislation)
+            if (state.sourceType !== 'legislation') {
+                if (data.authorMode === 'person' && (!data.authors || data.authors.length === 0)) {
+                    showStatus('Please enter at least one author.', 'error');
+                    return;
+                }
+                if (data.authorMode === 'organisation' && !data.orgFull && !data.orgAbbrev) {
+                    showStatus('Please enter the organisation name.', 'error');
+                    return;
+                }
             }
 
             hideStatus();
