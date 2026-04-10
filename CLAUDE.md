@@ -24,7 +24,7 @@ The app is hosted on GitHub Pages from the `master` branch; pushing to `master` 
 | HTML body | Header (with Help link), tabs, source type grid, form container, result area, footer |
 | `CONFIGURATION & STATE` | `state` object, `authorComponents`, `formState`, `TYPE_DISPLAY_NAMES` |
 | `SOURCE TYPE DEFINITIONS` | `SOURCE_FIELDS` object — field config for each type |
-| `UTILITY FUNCTIONS` | Author formatting, date helpers, `toSentenceCase`, `linkTitle`, etc. |
+| `UTILITY FUNCTIONS` | Author formatting, date helpers, `toSentenceCase`, `linkTitle`, `resetAll`, etc. |
 | `AUSTRALIAN GOVERNMENT BODY LOOKUP` | `GOV_AU_ORGS` map + `lookupGovAuOrg()` |
 | `API FUNCTIONS` | CrossRef, Open Library, Google Books, URL page-title fetch |
 | `CITATION FORMATTERS` | One function per source type, plus `formatCitation()` dispatch |
@@ -142,9 +142,16 @@ Returns `{ title, isHint }` or `null` if all strategies fail.
 
 When `isHint` is true, a 'Title inferred from URL — please verify.' help-text message is shown under the title field, and the status notice explains the inference. A 'Why didn't this work?' link points to the relevant FAQ anchor in `help.html`.
 
-### AIHW URL special-casing
+### URL source type special-casing in `suggestTypeFromURL()`
 
-If the pasted URL hostname is `aihw.gov.au`, `suggestTypeFromURL()` returns `'report'` (Govt report) rather than `'website'`. AIHW pages are protected by Cloudflare, which blocks both the allorigins proxy and the Jina AI renderer, so the title fetch will always fall through to the slug heuristic.
+Certain hostnames are mapped to a specific source type before the generic `.gov.au` → `'website'` fallback:
+
+| Hostname pattern | Mapped type | Reason |
+|---|---|---|
+| `aihw.gov.au` / `*.aihw.gov.au` | `report` | AIHW pages are Cloudflare-protected; title fetch always falls back to slug heuristic |
+| `legislation.*` (any TLD) | `legislation` | Covers all nine state/territory/federal legislation registries (ACT, NSW, NT, QLD, SA, TAS, VIC, WA, federal) |
+
+The legislation rule matches any hostname starting with `legislation.`, which covers all nine registries (`legislation.act.gov.au`, `legislation.nsw.gov.au`, `legislation.gov.au`, etc.).
 
 ---
 
@@ -226,10 +233,19 @@ Inline contextual nudges in the app link directly to anchors within `help.html` 
 
 ---
 
-## Copy system
+## Result area buttons
 
-- **Copy plain text** — `state.lastResult.plain` (tags stripped)
-- **Copy with formatting** — uses `ClipboardItem` API to copy `text/html` + `text/plain` simultaneously so italics paste into Word/Google Docs; falls back to plain text if `ClipboardItem` is unavailable
+All four buttons share the `copy-btn` style (grey pill, consistent appearance):
+
+| Button | ID | Action |
+|---|---|---|
+| Copy plain text | `#copy-plain` | Copies `state.lastResult.plain` (tags stripped) |
+| Copy with formatting | `#copy-rich` | Uses `ClipboardItem` API to copy `text/html` + `text/plain`; falls back to plain if unavailable |
+| Edit details | `#edit-details-btn` | Re-populates the manual form from the last lookup result |
+| New citation | `#new-citation-btn` | Calls `resetAll()` — clears all state and starts fresh |
+
+### `resetAll()`
+Clears the lookup input, `state.lookupData`, `state.lastResult`, all `formState` entries, all `authorComponents` entries, resets the source type selector to `journal`, rebuilds a blank Journal article form, and hides the result area and any status/notice messages. Replaces the old footer instruction 'Refresh your browser to start a new citation.'
 
 ---
 

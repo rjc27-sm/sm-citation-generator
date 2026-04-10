@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "WebFetch(domain:www.stylemanual.gov.au)",
+      "WebSearch",
+      "Bash(curl:*)",
+      "Bash(where curl:*)",
+      "Bash(/c/Windows/System32/curl.exe --version:*)",
+      "Bash(dir)",
+      "Bash(node:*)",
+      "Bash(git -C \"C:/Projects/sm-citation-generator\" status)",
+      "Bash(gh --version:*)",
+      "Bash(gh auth status:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(gh api:*)",
+      "Bash(git config:*)",
+      "Bash(gh repo create:*)",
+      "Bash(dir:*)",
+      "Bash(git push)",
+      "Bash(Select-String -Path \"C:\\\\Projects\\\\sm-citation-generator\\\\index.html\" -Pattern \"url-notice|showUrlNotice|hideUrlNotice|formState|saveFormState|formatPageRange|autoFormatDate\")",
+      "Bash(Measure-Object:*)",
+      "Bash(Select-Object -ExpandProperty Count)",
+      "Bash(git -C \"C:/Projects/sm-citation-generator\" push origin master)",
+      "Bash(git push origin master)",
+      "Bash(python -c \":*)",
+      "Bash(pandoc \"C:\\\\Users\\\\jenay\\\\OneDrive\\\\Documents\\\\Citation generator\\\\Conference and thesis.docx\" -t markdown)"
+    ]
+  }
+}
