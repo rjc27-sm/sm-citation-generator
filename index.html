@@ -749,7 +749,8 @@
                 <div class="copy-buttons">
                     <button class="copy-btn" id="copy-plain" type="button">Copy plain text</button>
                     <button class="copy-btn" id="copy-rich" type="button">Copy with formatting</button>
-                    <button class="btn-link" id="edit-details-btn" type="button">Edit details</button>
+                    <button class="copy-btn" id="edit-details-btn" type="button">Edit details</button>
+                    <button class="copy-btn" id="new-citation-btn" type="button">New citation</button>
                 </div>
 
                 <div class="intext-section">
@@ -763,7 +764,6 @@
                 <p>This tool generates citations following the <a href="https://www.stylemanual.gov.au/referencing-and-attribution/author-date" target="_blank" rel="noopener">Australian Government Style Manual author&ndash;date system</a>.</p>
                 <p>Always check generated citations for accuracy, especially for complex sources.</p>
                 <p>Found a bug or have a suggestion? <a href="https://forms.office.com/Pages/ResponsePage.aspx?id=CzcK22S1RUCEh5b_lwUSwHlJFHEe3VtHiDghW-pGfWpUNVRSVkVKWDkyOTdIWkVOTk5NSTFJMFpWTS4u" target="_blank" rel="noopener">Share your feedback</a></p>
-                <p>Refresh your browser to start a new citation.</p>
                 <p><a href="help.html">Help</a></p>
             </div>
         </main>
@@ -1159,6 +1159,7 @@
         try {
             const hostname = new URL(url).hostname.toLowerCase();
             if (hostname === 'aihw.gov.au' || hostname.endsWith('.aihw.gov.au')) return 'report';
+            if (hostname.startsWith('legislation.') || hostname === 'legislation.gov.au') return 'legislation';
             if (hostname.endsWith('.gov.au') || hostname.endsWith('.gov')) return 'website';
             const newsDomains = [
                 'abc.net.au','sbs.com.au','smh.com.au','theaustralian.com.au',
@@ -1173,6 +1174,23 @@
         } catch {
             return 'website';
         }
+    }
+
+    function resetAll() {
+        document.getElementById('smart-input').value = '';
+        state.lookupData = null;
+        state.lastResult = null;
+        Object.keys(formState).forEach(k => delete formState[k]);
+        Object.keys(authorComponents).forEach(k => delete authorComponents[k]);
+        state.sourceType = 'journal';
+        document.querySelectorAll('.source-type-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === 'journal');
+            btn.setAttribute('aria-checked', btn.dataset.type === 'journal' ? 'true' : 'false');
+        });
+        buildForm('journal');
+        document.getElementById('result-area').classList.remove('visible');
+        hideStatus();
+        hideUrlNotice();
     }
 
     // ===== AUSTRALIAN GOVERNMENT BODY LOOKUP =====
@@ -3007,6 +3025,9 @@
 
         // Edit details button
         document.getElementById('edit-details-btn').addEventListener('click', handleEditDetails);
+
+        // New citation button
+        document.getElementById('new-citation-btn').addEventListener('click', resetAll);
 
         // Sentence case buttons (delegated)
         document.addEventListener('click', (e) => {
