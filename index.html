@@ -764,7 +764,7 @@
                 <p>This tool generates citations following the <a href="https://www.stylemanual.gov.au/referencing-and-attribution/author-date" target="_blank" rel="noopener">Australian Government Style Manual author&ndash;date system</a>.</p>
                 <p>Always check generated citations for accuracy, especially for complex sources.</p>
                 <p>Found a bug or have a suggestion? <a href="https://forms.office.com/Pages/ResponsePage.aspx?id=CzcK22S1RUCEh5b_lwUSwHlJFHEe3VtHiDghW-pGfWpUNVRSVkVKWDkyOTdIWkVOTk5NSTFJMFpWTS4u" target="_blank" rel="noopener">Share your feedback</a></p>
-                <p><a href="help.html">Help</a></p>
+
             </div>
         </main>
     </div>
@@ -830,7 +830,8 @@
         ],
         website: [
             { id: 'title', label: 'Page title', required: true, sentenceCase: true },
-            { id: 'websiteName', label: 'Website name', placeholder: 'e.g. Department of Health' },
+            { id: 'series', label: 'Larger publication or series', placeholder: 'e.g. Australian Pregnancy Care Guidelines', helpText: 'Fill in if this page belongs to a larger publication or series', sentenceCase: true },
+            { id: 'websiteName', label: 'Website name', placeholder: 'e.g. Department of Health or aihw.gov.au' },
             { id: 'year', label: 'Year (or leave blank for n.d.)', half: true },
             { id: 'accessDate', label: 'Access date', half: true, placeholder: 'e.g. 20 January 2025' },
             { id: 'url', label: 'URL' },
@@ -1112,6 +1113,7 @@
         if (!name) return '';
         const trimmed = name.trim();
         if (/website$/i.test(trimmed)) return trimmed;
+        if (/^[^\s]+\.[^\s]+$/.test(trimmed)) return trimmed;  // URL-style name — no 'website' suffix
         return trimmed + ' website';
     }
 
@@ -1242,6 +1244,7 @@
         'auspost.com.au':                    { full: 'Australian Postal Corporation', abbrev: '' },
         'apra.gov.au':                       { full: 'Australian Prudential Regulation Authority', abbrev: 'APRA' },
         'apsc.gov.au':                       { full: 'Australian Public Service Commission', abbrev: 'APSC' },
+        'stylemanual.gov.au':                { full: 'Australian Public Service Commission', abbrev: 'APSC' },
         'arpansa.gov.au':                    { full: 'Australian Radiation Protection and Nuclear Safety Agency', abbrev: 'ARPANSA' },
         'arpc.gov.au':                       { full: 'Australian Reinsurance Pool Corporation', abbrev: 'ARPC' },
         'arena.gov.au':                      { full: 'Australian Renewable Energy Agency', abbrev: 'ARENA' },
@@ -1960,7 +1963,12 @@
         const accessDate = data.accessDate || getTodayFormatted();
 
         let parts = [];
-        parts.push(linkTitle(`<em>${data.title}</em>`, data));
+        if (data.series) {
+            parts.push(`'${linkTitle(data.title, data)}'`);
+            parts.push(`<em>${data.series}</em>`);
+        } else {
+            parts.push(linkTitle(`<em>${data.title}</em>`, data));
+        }
         if (data.websiteName) parts.push(formatWebsiteName(data.websiteName));
         parts.push(`accessed ${accessDate}`);
 
@@ -2867,6 +2875,16 @@
                         websiteName: orgMatch.abbrev || orgMatch.full,
                     } : {}),
                 };
+
+                // Style Manual pages: override websiteName and pre-fill series
+                try {
+                    const smUrl = new URL(input);
+                    const smHostname = smUrl.hostname.toLowerCase().replace(/^www\./, '');
+                    if (smHostname === 'stylemanual.gov.au' && smUrl.pathname !== '/' && smUrl.pathname !== '') {
+                        prefill.websiteName = 'stylemanual.gov.au';
+                        prefill.series = 'Australian Government style manual';
+                    }
+                } catch {}
 
                 buildForm(suggestedType, prefill);
                 switchTab('manual');

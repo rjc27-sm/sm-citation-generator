@@ -50,7 +50,7 @@ Each type has:
 | `journal` | Journal article | `formatJournalArticle` | single quotes | year | |
 | `book` | Book | `formatBook` | italics | year | |
 | `chapter` | Book chapter | `formatBookChapter` | single quotes | year | Has editor component |
-| `website` | Webpage | `formatWebsite` | italics | year | accessed date |
+| `website` | Webpage | `formatWebsite` | italics (standalone) or single quotes (in series) | year | accessed date; optional `series` field switches to 'webpage in larger publication' format |
 | `report` | Govt report | `formatReport` | italics | year | accessed date; repeats agency short name; supports 'Unpublished' |
 | `newspaper` | Newspaper | `formatNewspaper` | single quotes | full date | accessed date only if URL present |
 | `dataset` | Data set | `formatDataset` | italics | year | `[data set]` outside link; accessed date; supports 'Unpublished' |
@@ -153,6 +153,14 @@ Certain hostnames are mapped to a specific source type before the generic `.gov.
 
 The legislation rule matches any hostname starting with `legislation.`, which covers all nine registries (`legislation.act.gov.au`, `legislation.nsw.gov.au`, `legislation.gov.au`, etc.).
 
+### `stylemanual.gov.au` special-casing in `handleSmartPaste()`
+
+Beyond `suggestTypeFromURL()` and `lookupGovAuOrg()`, there is an additional post-lookup override for Style Manual pages. After the standard `prefill` object is constructed, `handleSmartPaste()` checks whether the URL hostname is `stylemanual.gov.au` and the path is not the homepage (`/`). If so, it overrides:
+- `prefill.websiteName` → `'stylemanual.gov.au'` (instead of the default `orgMatch.abbrev` value `'APSC'`)
+- `prefill.series` → `'Australian Government style manual'`
+
+`stylemanual.gov.au` is also in `GOV_AU_ORGS` so the org author (APSC / Australian Public Service Commission) is pre-filled via the normal lookup path.
+
 ---
 
 ## GOV_AU_ORGS lookup table
@@ -180,13 +188,15 @@ All formatters return `{ html, plain, year, intext }`:
 | Function | What it does |
 |---|---|
 | `linkTitle(titleHtml, data)` | Wraps `titleHtml` in `<a href>` if DOI or URL present; DOI takes priority |
-| `formatWebsiteName(name)` | Appends ` website` if name doesn't already end with 'website' |
+| `formatWebsiteName(name)` | Appends ` website` if name doesn't already end with 'website' and isn't URL-style (no spaces + contains a dot — e.g. `aihw.gov.au`) |
 | `formatDOI(doi)` | Returns `doi:xxxxx` formatted as a hyperlink |
 | `formatEdition(n)` | `2` → `2nd edn`, `3` → `3rd edn`, etc. |
 | `formatPageRange(pages)` | Converts hyphens to en dashes in page ranges |
 | `buildIntextOptions(authorStr, year)` | Returns the two in-text forms |
 | `getTodayFormatted()` | Returns today as `D Month YYYY` |
 | `autoFormatDate(value)` | Parses D/M/YY(YY) and reformats to `D Month YYYY`; returns original if unrecognised |
+
+**`website` type — conditional title format:** `formatWebsite` checks `data.series`. If present, the title is rendered as `'<linked title>'` (single-quoted, linked) followed by `<em>series name</em>` — the AGSM 'webpage as part of a larger publication or series' rule. If absent, the title is `<em><linked title></em>` (italic) as normal.
 
 **`[data set]` and `[media release]` descriptors** sit outside the `<a>` link tag — only the italic title text is hyperlinked:
 ```js
