@@ -1796,10 +1796,10 @@
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(data.contents, 'text/html');
                     const og = doc.querySelector('meta[property="og:title"]');
-                    const ogVal = og?.getAttribute('content')?.trim();
+                    const ogVal = og?.getAttribute('content')?.trim().replace(/\s*[|–—-]\s*[^|–—-]+$/, '').trim();
                     if (ogVal && !isJunkTitle(ogVal)) return { title: ogVal, isHint: false };
                     const tw = doc.querySelector('meta[name="twitter:title"]');
-                    const twVal = tw?.getAttribute('content')?.trim();
+                    const twVal = tw?.getAttribute('content')?.trim().replace(/\s*[|–—-]\s*[^|–—-]+$/, '').trim();
                     if (twVal && !isJunkTitle(twVal)) return { title: twVal, isHint: false };
                     const h1 = doc.querySelector('h1');
                     const h1Val = h1?.textContent.trim();
@@ -1824,7 +1824,7 @@
             if (response.ok) {
                 const text = await response.text();
                 const match = text.match(/^Title:\s*(.+)$/m);
-                const jinaTitle = match?.[1].trim();
+                const jinaTitle = match?.[1].trim().replace(/\s*[|–—-]\s*[^|–—-]+$/, '').trim();
                 if (jinaTitle && !isJunkTitle(jinaTitle)) return { title: jinaTitle, isHint: false };
             }
         } catch { /* fall through to next strategy */ }
