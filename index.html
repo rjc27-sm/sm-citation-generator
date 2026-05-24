@@ -546,6 +546,122 @@
             color: white;
         }
 
+        /* ===== FIX REFERENCES PANEL ===== */
+        #fix-input[contenteditable] {
+            min-height: 200px;
+            max-height: 480px;
+            overflow-y: auto;
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            color: #1d1d1d;
+            line-height: 1.6;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        #fix-input[contenteditable]:focus {
+            border-color: #1c3a5f;
+            box-shadow: 0 0 0 3px rgba(28, 58, 95, 0.1);
+        }
+
+        #fix-input[contenteditable]:empty::before {
+            content: attr(data-placeholder);
+            color: #9ca3af;
+            pointer-events: none;
+        }
+
+        #fix-input[contenteditable] p {
+            margin: 0 0 10px;
+        }
+
+        #fix-input[contenteditable] p:last-child {
+            margin-bottom: 0;
+        }
+
+        .fix-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .fix-result-area {
+            margin-top: 24px;
+            display: none;
+        }
+
+        .fix-result-area.visible {
+            display: block;
+        }
+
+        .fix-summary {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .fix-summary strong {
+            color: #065f46;
+        }
+
+        .fix-ref-list {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .fix-ref-item {
+            padding: 14px 16px;
+            font-size: 14px;
+            line-height: 1.7;
+            border-bottom: 1px solid #f1f5f9;
+            word-break: break-word;
+            border-left: 3px solid transparent;
+        }
+
+        .fix-ref-item:last-child {
+            border-bottom: none;
+        }
+
+        .fix-ref-item.changed {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .fix-ref-item.skipped {
+            border-left-color: #f59e0b;
+            background: #fefce8;
+        }
+
+        .fix-ref-item a {
+            color: #1c3a5f;
+            text-decoration: underline;
+            text-decoration-color: #9ca3af;
+        }
+
+        .fix-ref-item a:hover {
+            text-decoration-color: #1c3a5f;
+        }
+
+        .fix-skip-reason {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .fix-copy-bar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
         /* ===== IN-TEXT CITATIONS ===== */
         .intext-section {
             margin-top: 16px;
@@ -672,6 +788,11 @@
                 width: 100%;
                 text-align: center;
             }
+
+            .fix-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
         }
 
         @media (max-width: 400px) {
@@ -703,6 +824,7 @@
             <div class="tabs">
                 <button class="tab active" data-tab="lookup" type="button">Quick lookup</button>
                 <button class="tab" data-tab="manual" type="button">Manual entry</button>
+                <button class="tab" data-tab="fix" type="button">Link titles</button>
             </div>
 
             <!-- Tab 1: Quick lookup -->
@@ -737,6 +859,25 @@
                 <div id="url-notice" class="status" role="status" aria-live="polite"></div>
                 <div id="manual-form"></div>
                 <button class="btn btn-primary" id="generate-btn" type="button">Generate citation</button>
+            </div>
+
+            <!-- Tab 3: Link titles -->
+            <div id="fix-panel" class="tab-panel">
+                <label class="form-label" for="fix-input">Paste your reference list</label>
+                <div id="fix-input" contenteditable="true" role="textbox" aria-multiline="true"
+                     data-placeholder="Paste your formatted AGSM references here (directly from Word). References with a raw URL at the end will have that URL hyperlinked into the title and removed from the end."></div>
+                <p class="help-text">Paste directly from Word to preserve italics and existing hyperlinks. DOIs (<code>doi:10.xxx/yyy</code>) are left unchanged.</p>
+                <div class="fix-actions">
+                    <button class="btn btn-primary" id="fix-btn" type="button">Link titles</button>
+                    <button class="copy-btn" id="fix-clear-btn" type="button">Clear</button>
+                </div>
+                <div id="fix-result-area" class="fix-result-area" aria-live="polite">
+                    <p class="fix-summary" id="fix-summary"></p>
+                    <div class="fix-ref-list" id="fix-ref-list"></div>
+                    <div class="fix-copy-bar">
+                        <button class="copy-btn" id="fix-copy-all" type="button">Copy all with formatting</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Status message -->
@@ -783,6 +924,9 @@
 
     // Persisted field values per source type (survives tab/type switches until page refresh)
     const formState = {};
+
+    // Results from the last Fix references run — used by copy functions
+    let fixResults = [];
 
     // Human-readable display names for source types
     const TYPE_DISPLAY_NAMES = {
@@ -2961,6 +3105,509 @@
         }
     }
 
+    // ===== LINK TITLES =====
+
+    function escHtmlText(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function escRegex(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /**
+     * Clean Word HTML paste: normalise italic markup, strip noise, return <p>-wrapped blocks.
+     */
+    function cleanWordHtml(html) {
+        // Parse italic class names from the Word <style> block BEFORE extracting fragment.
+        // Word applies italics via class (e.g. .MsoItalic) not always inline style.
+        const italicClasses = new Set();
+        const styleBlock = html.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+        if (styleBlock) {
+            const ruleRe = /([^{}]+)\{[^}]*font-style\s*:\s*italic[^}]*\}/gi;
+            let m;
+            while ((m = ruleRe.exec(styleBlock[1])) !== null) {
+                m[1].split(',').forEach(sel => {
+                    (sel.trim().match(/\.([\w-]+)/g) || []).forEach(c => italicClasses.add(c.slice(1)));
+                });
+            }
+        }
+
+        // Extract just the fragment content
+        const start = html.indexOf('<!--StartFragment-->');
+        const end = html.indexOf('<!--EndFragment-->');
+        if (start !== -1 && end !== -1) html = html.slice(start + 20, end);
+
+        const div = document.createElement('div');
+        div.innerHTML = html;
+
+        // Remove Word noise elements
+        div.querySelectorAll('o\\:p, xml, head, style, script, meta').forEach(el => el.remove());
+
+        // Convert class-based italic elements (e.g. class="MsoItalic") → <em>
+        if (italicClasses.size > 0) {
+            div.querySelectorAll('[class]').forEach(el => {
+                const cls = (el.getAttribute('class') || '').split(/\s+/);
+                if (cls.some(c => italicClasses.has(c))) {
+                    const em = document.createElement('em');
+                    em.innerHTML = el.innerHTML;
+                    el.replaceWith(em);
+                }
+            });
+        }
+
+        // Convert <span style="font-style:italic"> → <em>
+        div.querySelectorAll('span[style]').forEach(span => {
+            if (/font-style\s*:\s*italic/i.test(span.getAttribute('style') || '')) {
+                const em = document.createElement('em');
+                em.innerHTML = span.innerHTML;
+                span.replaceWith(em);
+            }
+        });
+
+        // Convert <i> → <em>
+        div.querySelectorAll('i').forEach(el => {
+            const em = document.createElement('em');
+            em.innerHTML = el.innerHTML;
+            el.replaceWith(em);
+        });
+
+        // Clean <a> elements: keep only href, remove internal/comment links
+        div.querySelectorAll('a').forEach(a => {
+            const href = a.getAttribute('href') || '';
+            [...a.attributes].forEach(attr => { if (attr.name !== 'href') a.removeAttribute(attr.name); });
+            if (!href || href.startsWith('mailto:') || href.includes('file:') || href.startsWith('#')) {
+                a.replaceWith(document.createTextNode(a.textContent));
+            }
+        });
+
+        // Strip remaining spans (keep content)
+        div.querySelectorAll('span').forEach(span => span.replaceWith(...Array.from(span.childNodes)));
+
+        // Strip other formatting tags except em/strong/a, keeping their content
+        div.querySelectorAll('b, strong').forEach(el => {
+            const s = document.createElement('strong');
+            s.innerHTML = el.innerHTML;
+            el.replaceWith(s);
+        });
+        ['u', 'sub', 'sup', 'font', 'div'].forEach(tag => {
+            div.querySelectorAll(tag).forEach(el => el.replaceWith(...Array.from(el.childNodes)));
+        });
+
+        // Collect <p> and <li> blocks
+        const blocks = [...div.querySelectorAll('p, li')]
+            .map(el => el.innerHTML.trim().replace(/&nbsp;/g, ' ').replace(/\s+/g, ' '))
+            .filter(html => html.replace(/<[^>]+>/g, '').trim());
+
+        if (blocks.length > 0) return blocks.map(b => `<p>${b}</p>`).join('');
+
+        // Fallback: return div content as-is
+        return div.innerHTML;
+    }
+
+    /** Split the contenteditable div's HTML into per-reference HTML strings. */
+    function splitHtmlBlocks(containerHtml) {
+        const div = document.createElement('div');
+        div.innerHTML = containerHtml;
+        const paras = [...div.querySelectorAll('p')];
+        if (paras.length > 0) {
+            return paras
+                .map(p => p.innerHTML.trim().replace(/&nbsp;/g, ' ').replace(/\s+/g, ' '))
+                .filter(h => h.replace(/<[^>]+>/g, '').trim());
+        }
+        // Fallback: split on <br> or line breaks
+        return containerHtml
+            .split(/<br\s*\/?>/i)
+            .map(s => s.replace(/<[^>]+>/g, '').trim())
+            .filter(Boolean);
+    }
+
+    /**
+     * Extract a trailing non-DOI URL from plain text.
+     * Returns { url: string|null }.
+     */
+    function extractTrailingUrl(textContent) {
+        const allUrls = [...textContent.matchAll(/https?:\/\/[^\s<>,"]+/gi)];
+        if (allUrls.length === 0) return { url: null };
+
+        const lastMatch = allUrls[allUrls.length - 1];
+        const rawUrl = lastMatch[0].replace(/[.,;)\]>]+$/, '');
+
+        // Treat doi.org links as DOIs — leave unchanged
+        if (/^https?:\/\/(dx\.)?doi\.org\//i.test(rawUrl)) return { url: null };
+
+        return { url: rawUrl };
+    }
+
+    /**
+     * Find the title span in plain text (used for quoted-title fallback).
+     * Returns { titleText, isQuoted } or null.
+     */
+    function findTitleSpan(refText) {
+        // Primary: (2023) or (2023a)
+        let yearMatch = refText.match(/\(\d{4}[a-z]?\)/);
+        let afterYear;
+        if (yearMatch) {
+            afterYear = yearMatch.index + yearMatch[0].length;
+        } else {
+            // Secondary: (unpublished) or (n.d.) used as year-equivalents in AGSM
+            const specialMatch = refText.match(/\((unpublished|n\.d\.)\)/i);
+            if (specialMatch) {
+                afterYear = specialMatch.index + specialMatch[0].length;
+            } else {
+                // Fallback: bare year inside a parenthetical like (19 October 2023)
+                yearMatch = refText.match(/\b\d{4}\b/);
+                if (!yearMatch) return null;
+                afterYear = yearMatch.index + yearMatch[0].length;
+                // Skip to end of the enclosing parenthetical
+                const parenClose = refText.indexOf(')', yearMatch.index);
+                if (parenClose !== -1) afterYear = parenClose + 1;
+            }
+        }
+
+        // Skip whitespace/punctuation after year
+        let pos = afterYear;
+        while (pos < refText.length && /[\s,.]/.test(refText[pos])) pos++;
+        if (pos >= refText.length) return null;
+
+        const ch = refText[pos];
+        const isOpenQuote = ch === "'" || ch === '‘' || ch === '’';
+
+        if (isOpenQuote) {
+            const titleStart = pos;
+            pos++;
+            while (pos < refText.length) {
+                const c = refText[pos];
+                if (c === "'" || c === '‘' || c === '’') {
+                    const next = refText[pos + 1];
+                    if (!next || next === ',' || next === '.' || next === ' ') {
+                        return {
+                            titleText: refText.slice(titleStart, pos + 1),
+                            isQuoted: true
+                        };
+                    }
+                }
+                pos++;
+            }
+            return null;
+        } else {
+            const titleStart = pos;
+            // Stop at first comma or '[' (handles "[media release]" etc.)
+            const endMatch = refText.slice(titleStart).search(/[,\[]/);
+            const titleEnd = endMatch === -1 ? refText.length : titleStart + endMatch;
+            if (titleEnd <= titleStart) return null;
+            return { titleText: refText.slice(titleStart, titleEnd).trimEnd(), isQuoted: false };
+        }
+    }
+
+    /** Remove the trailing URL from a DOM block (handles <a> element or plain text). */
+    function removeUrlFromBlock(div, url) {
+        const escapedUrl = escRegex(url);
+
+        // Case 1: URL exists as an <a> element (Word auto-links URLs)
+        for (const a of [...div.querySelectorAll('a')].reverse()) {
+            const href = (a.getAttribute('href') || '').replace(/[.,;)]+$/, '');
+            const text = a.textContent.trim().replace(/^[<\s]+|[>.\s]+$/g, '');
+            if (href === url || text === url || href.replace(/[.,;)]+$/, '') === url) {
+                // Remove preceding ', ' and any angle-bracket in text node before it
+                const prev = a.previousSibling;
+                if (prev && prev.nodeType === Node.TEXT_NODE) {
+                    prev.nodeValue = prev.nodeValue.replace(/[,\s]*[<]?\s*$/, '');
+                }
+                const next = a.nextSibling;
+                if (next && next.nodeType === Node.TEXT_NODE) {
+                    next.nodeValue = next.nodeValue.replace(/^[>).,\s]*/, '');
+                }
+                a.remove();
+                ensureTrailingPeriod(div);
+                return;
+            }
+        }
+
+        // Case 2: URL is plain text
+        const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        let n; while (n = walker.nextNode()) nodes.push(n);
+        for (let i = nodes.length - 1; i >= 0; i--) {
+            const tn = nodes[i];
+            const t = tn.nodeValue;
+            if (t.includes(url) || /<https?:\/\//.test(t) || /https?:\/\//.test(t)) {
+                tn.nodeValue = t
+                    .replace(/,?\s*<https?:\/\/[^>]+>\s*\.?$/, '')
+                    .replace(new RegExp(',?\\s*' + escapedUrl + '[.,;)]*\\s*\\.?$'), '')
+                    .replace(/,?\s*https?:\/\/\S+\s*\.?$/, '')
+                    .trimEnd();
+                ensureTrailingPeriod(div);
+                return;
+            }
+        }
+    }
+
+    function ensureTrailingPeriod(div) {
+        const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+        let last = null, n;
+        while (n = walker.nextNode()) { if (n.nodeValue.trim()) last = n; }
+        if (last) {
+            last.nodeValue = last.nodeValue.trimEnd();
+            if (!last.nodeValue.endsWith('.')) last.nodeValue += '.';
+        }
+    }
+
+    /** Add a hyperlink to the title within a DOM block. */
+    function hyperlinkTitleInBlock(div, url) {
+        const span = findTitleSpan(div.textContent);
+
+        if (span && span.isQuoted) {
+            // Quoted title ('Article title'): link only the inner text, keep quotes outside
+            const inner = span.titleText.slice(1, -1);
+            const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+            let node;
+            while (node = walker.nextNode()) {
+                const idx = node.nodeValue.indexOf(span.titleText);
+                if (idx === -1) continue;
+                const before = node.nodeValue.slice(0, idx + 1); // keep opening quote
+                const after  = node.nodeValue.slice(idx + span.titleText.length - 1); // keep closing quote
+                const a = document.createElement('a');
+                a.href = url; a.target = '_blank'; a.rel = 'noopener';
+                a.appendChild(document.createTextNode(inner));
+                const parent = node.parentNode;
+                if (before) parent.insertBefore(document.createTextNode(before), node);
+                parent.insertBefore(a, node);
+                if (after) parent.insertBefore(document.createTextNode(after), node);
+                parent.removeChild(node);
+                return true;
+            }
+        }
+
+        // Unquoted title: first <em>/<i> not already inside an <a> (report/book/webpage)
+        const emEls = [...div.querySelectorAll('em, i')].filter(el => !el.closest('a'));
+        if (emEls.length > 0) {
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            emEls[0].parentNode.insertBefore(a, emEls[0]);
+            a.appendChild(emEls[0]);
+            return true;
+        }
+
+        // Last resort: unquoted plain-text title (e.g. media release with no italics)
+        // Wrap in <em> per AGSM: unquoted titles are italic.
+        if (span) {
+            const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+            let node;
+            while (node = walker.nextNode()) {
+                const idx = node.nodeValue.indexOf(span.titleText);
+                if (idx === -1) continue;
+                const before = node.nodeValue.slice(0, idx);
+                const after  = node.nodeValue.slice(idx + span.titleText.length);
+                const em = document.createElement('em');
+                em.textContent = span.titleText;
+                const a = document.createElement('a');
+                a.href = url; a.target = '_blank'; a.rel = 'noopener';
+                a.appendChild(em);
+                const parent = node.parentNode;
+                if (before) parent.insertBefore(document.createTextNode(before), node);
+                parent.insertBefore(a, node);
+                if (after) parent.insertBefore(document.createTextNode(after), node);
+                parent.removeChild(node);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Shared helper: find targetText in div's text nodes (skipping existing <em>/<i>)
+     * and wrap it in a new <em>. Returns true if wrapped.
+     */
+    function wrapPlainTextInEm(div, targetText, skipExistingItalic = true) {
+        if (!targetText || targetText.length < 2) return false;
+        const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+        let node;
+        while (node = walker.nextNode()) {
+            if (skipExistingItalic && node.parentElement && node.parentElement.closest('em, i')) continue;
+            const idx = node.nodeValue.indexOf(targetText);
+            if (idx === -1) continue;
+            const before = node.nodeValue.slice(0, idx);
+            const after  = node.nodeValue.slice(idx + targetText.length);
+            const em = document.createElement('em');
+            em.textContent = targetText;
+            const parent = node.parentNode;
+            if (before) parent.insertBefore(document.createTextNode(before), node);
+            parent.insertBefore(em, node);
+            if (after) parent.insertBefore(document.createTextNode(after), node);
+            parent.removeChild(node);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * For journal/newspaper articles (quoted title): ensure the name immediately
+     * after the closing quote + ', ' is italic. Skips book chapters ('in …').
+     */
+    function ensureJournalNameItalic(div) {
+        const text = div.textContent;
+        const span = findTitleSpan(text);
+        if (!span || !span.isQuoted) return false;
+
+        const titleIdx = text.indexOf(span.titleText);
+        if (titleIdx === -1) return false;
+        let pos = titleIdx + span.titleText.length;
+
+        // Skip ', '
+        if (pos < text.length && text[pos] === ',') pos++;
+        while (pos < text.length && text[pos] === ' ') pos++;
+
+        // Book chapters handled separately
+        if (/^in\s/i.test(text.slice(pos))) return false;
+
+        const nextComma = text.indexOf(',', pos);
+        if (nextComma === -1) return false;
+        const journalName = text.slice(pos, nextComma).trim();
+        return wrapPlainTextInEm(div, journalName);
+    }
+
+    /**
+     * For book chapters (quoted chapter title): ensure the book title is italic.
+     * AGSM pattern: 'Chapter title', in [Editor (ed.),] Book Title, Publisher.
+     * If a segment containing '(ed' appears after 'in ', that's the editor — skip
+     * it and take the next segment as the book title.
+     */
+    function ensureBookTitleItalic(div) {
+        const text = div.textContent;
+        const span = findTitleSpan(text);
+        if (!span || !span.isQuoted) return false;
+
+        const titleIdx = text.indexOf(span.titleText);
+        if (titleIdx === -1) return false;
+        let pos = titleIdx + span.titleText.length;
+
+        // Must be followed by ', in '
+        const afterTitle = text.slice(pos);
+        const inMatch = afterTitle.match(/^,\s*in\s+/i);
+        if (!inMatch) return false;
+        pos += inMatch[0].length;
+
+        // First segment after 'in '
+        const c1 = text.indexOf(',', pos);
+        if (c1 === -1) return false;
+        const seg1 = text.slice(pos, c1).trim();
+
+        // If segment contains editor marker like (ed.) or (eds), skip to next segment
+        if (/\(eds?\.?\)/i.test(seg1)) {
+            const c2 = text.indexOf(',', c1 + 1);
+            if (c2 === -1) return false;
+            let bookStart = c1 + 1;
+            while (bookStart < text.length && text[bookStart] === ' ') bookStart++;
+            const bookTitle = text.slice(bookStart, c2).trim();
+            return wrapPlainTextInEm(div, bookTitle);
+        }
+
+        // No editor — seg1 is the book title
+        return wrapPlainTextInEm(div, seg1);
+    }
+
+    /**
+     * For unquoted-title references (reports, books, datasets) where the block
+     * has NO italic elements at all: find the title span and wrap it in <em>.
+     */
+    function ensureUnquotedTitleItalic(div) {
+        if (div.querySelector('em, i')) return false;
+        const text = div.textContent;
+        const span = findTitleSpan(text);
+        if (!span || span.isQuoted) return false;
+        return wrapPlainTextInEm(div, span.titleText.trim(), false);
+    }
+
+    /** Process a single HTML reference block. */
+    function processReferenceHtml(blockHtml) {
+        const div = document.createElement('div');
+        div.innerHTML = blockHtml;
+
+        // Always normalise italics per AGSM rules (runs even for refs with no URL)
+        ensureJournalNameItalic(div);
+        ensureBookTitleItalic(div);
+        ensureUnquotedTitleItalic(div);
+
+        const { url } = extractTrailingUrl(div.textContent);
+        if (!url) return { html: div.innerHTML, changed: false, skipped: false };
+
+        removeUrlFromBlock(div, url);
+        const linked = hyperlinkTitleInBlock(div, url);
+
+        return {
+            html: div.innerHTML,
+            changed: true,
+            skipped: !linked,
+            skipReason: linked ? '' : 'URL removed but title could not be located – please add hyperlink manually.'
+        };
+    }
+
+    /** Process the full contenteditable content. */
+    function processReferenceList(containerHtml) {
+        return splitHtmlBlocks(containerHtml).map(processReferenceHtml);
+    }
+
+    /** Render processed results into the DOM. */
+    function renderFixResults(results) {
+        fixResults = results;
+        const changedCount = results.filter(r => r.changed).length;
+        const skippedCount = results.filter(r => r.skipped).length;
+        const total = results.length;
+
+        let summaryHtml;
+        if (total === 0) {
+            summaryHtml = 'No references found. Make sure references are separated by blank lines.';
+        } else if (changedCount === 0 && skippedCount === 0) {
+            summaryHtml = 'No references with trailing URLs were found.';
+        } else {
+            summaryHtml = `<strong>${changedCount} of ${total}</strong> reference${changedCount !== 1 ? 's' : ''} updated.`;
+            if (skippedCount > 0) {
+                summaryHtml += ` ${skippedCount} had URLs removed but title could not be auto-linked (shown with amber border).`;
+            }
+        }
+        document.getElementById('fix-summary').innerHTML = summaryHtml;
+
+        document.getElementById('fix-ref-list').innerHTML = results.map(r => {
+            const cls = r.changed ? (r.skipped ? 'skipped' : 'changed') : '';
+            const note = r.skipped ? ` <span class="fix-skip-reason"> — ${escHtmlText(r.skipReason)}</span>` : '';
+            return `<div class="fix-ref-item${cls ? ' ' + cls : ''}">${r.html}${note}</div>`;
+        }).join('');
+
+        const area = document.getElementById('fix-result-area');
+        area.classList.add('visible');
+        area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    /** Copy all processed references as rich HTML so hyperlinks survive paste into Word. */
+    function fixCopyAll() {
+        if (!fixResults.length) return;
+        const body = fixResults.map(r => `<p>${r.html}</p>`).join('\n');
+        const htmlPayload = `<html><body>${body}</body></html>`;
+        const plainPayload = fixResults.map(r => {
+            const d = document.createElement('div'); d.innerHTML = r.html; return d.textContent;
+        }).join('\n\n');
+        const btn = document.getElementById('fix-copy-all');
+        if (typeof ClipboardItem !== 'undefined') {
+            navigator.clipboard.write([new ClipboardItem({
+                'text/html':  new Blob([htmlPayload],  { type: 'text/html' }),
+                'text/plain': new Blob([plainPayload], { type: 'text/plain' })
+            })]).then(() => {
+                btn.textContent = 'Copied!'; btn.classList.add('copied');
+                setTimeout(() => { btn.textContent = 'Copy all with formatting'; btn.classList.remove('copied'); }, 2000);
+            }).catch(() => {
+                navigator.clipboard.writeText(plainPayload);
+                btn.textContent = 'Copied (plain)';
+                setTimeout(() => { btn.textContent = 'Copy all with formatting'; }, 2000);
+            });
+        } else {
+            navigator.clipboard.writeText(plainPayload);
+            btn.textContent = 'Copied (plain)';
+            setTimeout(() => { btn.textContent = 'Copy all with formatting'; }, 2000);
+        }
+    }
+
     // ===== EVENT HANDLERS =====
 
     /** Switch to a tab by name ('lookup' or 'manual'). */
@@ -3068,6 +3715,37 @@
                 }
             }
         }, true); // Capture phase so blur events bubble up
+
+        // Link titles tab
+        const fixInput = document.getElementById('fix-input');
+
+        // Intercept paste to clean Word HTML and normalise italic markup
+        fixInput.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const html = e.clipboardData.getData('text/html');
+            if (html) {
+                document.execCommand('insertHTML', false, cleanWordHtml(html));
+            } else {
+                // Plain text fallback: wrap each non-empty line in <p>
+                const text = e.clipboardData.getData('text/plain');
+                const cleaned = text.split(/\n+/).map(l => l.trim()).filter(Boolean)
+                    .map(l => `<p>${escHtmlText(l)}</p>`).join('');
+                document.execCommand('insertHTML', false, cleaned);
+            }
+        });
+
+        document.getElementById('fix-btn').addEventListener('click', () => {
+            const html = fixInput.innerHTML;
+            if (!fixInput.textContent.trim()) return;
+            renderFixResults(processReferenceList(html));
+        });
+
+        document.getElementById('fix-clear-btn').addEventListener('click', () => {
+            fixInput.innerHTML = '';
+            document.getElementById('fix-result-area').classList.remove('visible');
+        });
+
+        document.getElementById('fix-copy-all').addEventListener('click', fixCopyAll);
 
         // === INITIALISATION ===
         buildForm('journal');
