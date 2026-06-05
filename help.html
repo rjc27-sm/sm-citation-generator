@@ -5,175 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Help – Style Manual citation generator</title>
     <style>
-        /* ===== RESET & BASE ===== */
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
 
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap');
+        :root{
+          --blue:#2d7e98;--b1:#192f38;--b2:#295665;--b4:#61a9be;--b5:#b7d6df;
+          --c1:#2b2d2d;--c2:#4f5152;--c3:#707678;--c4:#9c9fa0;--c5:#cfd1d1;
+          --bg:#f6f7f7;--line:#e3e6e6;--ease:cubic-bezier(.2,0,.2,1);
+        }
+        *, *::before, *::after { box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            line-height: 1.6;
-            color: #1d1d1d;
-            background: #f5f7fa;
-            margin: 0;
-            padding: 20px;
+            font-family: 'Open Sans', Arial, sans-serif; line-height: 1.5; color: var(--c1); background: var(--bg);
+            margin: 0; padding: 0 20px 48px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
         }
+        :focus-visible { outline: 3px solid rgba(45,126,152,.45); outline-offset: 2px; border-radius: 4px; }
+        .keyline { height: 4px; background: linear-gradient(90deg, var(--b2), var(--blue) 55%, var(--b4)); margin: 0 -20px; }
 
-        /* ===== LAYOUT ===== */
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+        .container { max-width: 860px; margin: 0 auto; }
+        header { background: transparent; color: inherit; padding: 32px 4px 20px; border-radius: 0; }
+        header h1 { margin: 0; font-size: 28px; font-weight: 800; color: var(--b1); letter-spacing: -.01em; line-height: 1.14; }
+        header p { margin: 8px 0 0; color: var(--c2); font-size: 15px; opacity: 1; }
+        header a { color: var(--blue); text-decoration: none; font-size: 14px; font-weight: 600; }
+        header a:hover { color: var(--b2); text-decoration: underline; }
 
-        header {
-            background: #1c3a5f;
-            color: white;
-            padding: 24px 32px;
-            border-radius: 8px 8px 0 0;
-        }
+        main { background: #fff; padding: 28px 32px; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 2px rgba(25,47,56,.04); }
+        main > h2 { color: var(--b1) !important; }
+        main > p a, .faq-answer a { color: var(--blue); }
 
-        header h1 {
-            margin: 0 0 6px 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
-
-        header p {
-            margin: 0;
-            opacity: 0.85;
-            font-size: 14px;
-        }
-
-        header a {
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-            font-size: 13px;
-        }
-
-        header a:hover {
-            color: white;
-            text-decoration: underline;
-        }
-
-        main {
-            background: white;
-            padding: 32px;
-            border-radius: 0 0 8px 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        /* ===== FAQ ===== */
-        .faq-section {
-            margin-bottom: 32px;
-        }
-
+        .faq-section { margin-bottom: 32px; }
         .faq-section h2 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1c3a5f;
-            margin: 0 0 12px 0;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e5e7eb;
+            font-size: 16px; font-weight: 700; color: var(--b1); margin: 0 0 12px 0; padding-bottom: 8px;
+            border-bottom: 2px solid var(--line);
         }
-
-        details {
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            overflow: hidden;
-        }
-
-        details[open] {
-            border-color: #c7d2e0;
-        }
-
+        details { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+        details[open] { border-color: var(--b5); }
         summary {
-            padding: 14px 16px;
-            font-size: 15px;
-            font-weight: 500;
-            color: #1d1d1d;
-            cursor: pointer;
-            list-style: none;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            user-select: none;
+            padding: 14px 16px; font-size: 15px; font-weight: 600; color: var(--b1); cursor: pointer; list-style: none;
+            display: flex; justify-content: space-between; align-items: center; user-select: none;
         }
+        summary::-webkit-details-marker { display: none; }
+        summary::after { content: '+'; font-size: 18px; color: var(--blue); font-weight: 400; flex-shrink: 0; margin-left: 12px; }
+        details[open] summary::after { content: '\2013'; }
+        summary:hover { background: #eef5f7; }
 
-        summary::-webkit-details-marker {
-            display: none;
-        }
+        .faq-answer { padding: 4px 16px 16px 16px; font-size: 14px; color: var(--c2); line-height: 1.7; border-top: 1px solid var(--line); }
+        .faq-answer p { margin: 12px 0 0 0; }
+        .faq-answer p:first-child { margin-top: 12px; }
+        .faq-answer ul, .faq-answer ol { margin: 8px 0 0 0; padding-left: 20px; }
+        .faq-answer li { margin-bottom: 4px; }
+        .faq-answer code, code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92em; background: var(--bg); padding: 1px 5px; border-radius: 4px; color: var(--b2); }
+        .faq-answer strong { color: var(--b1); }
 
-        summary::after {
-            content: '+';
-            font-size: 18px;
-            color: #6b7280;
-            font-weight: 400;
-            flex-shrink: 0;
-            margin-left: 12px;
-        }
+        .footer-note { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--c3); line-height: 1.6; }
+        .footer-note p { margin: 0 0 6px 0; }
+        .footer-note a { color: var(--b2); }
 
-        details[open] summary::after {
-            content: '–';
-        }
-
-        summary:hover {
-            background: #f9fafb;
-        }
-
-        .faq-answer {
-            padding: 4px 16px 16px 16px;
-            font-size: 14px;
-            color: #374151;
-            line-height: 1.7;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .faq-answer p {
-            margin: 12px 0 0 0;
-        }
-
-        .faq-answer p:first-child {
-            margin-top: 12px;
-        }
-
-        .faq-answer ul {
-            margin: 8px 0 0 0;
-            padding-left: 20px;
-        }
-
-        .faq-answer li {
-            margin-bottom: 4px;
-        }
-
-        /* ===== FOOTER ===== */
-        .footer-note {
-            margin-top: 24px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            font-size: 13px;
-            color: #6b7280;
-            line-height: 1.6;
-        }
-
-        .footer-note p {
-            margin: 0 0 6px 0;
-        }
-
-        .footer-note a {
-            color: #1c3a5f;
-        }
-
-        /* ===== RESPONSIVE ===== */
         @media (max-width: 600px) {
-            body { padding: 12px; }
-            header { padding: 20px; }
-            header h1 { font-size: 20px; }
+            body { padding: 0 14px 36px; }
+            .keyline { margin: 0 -14px; }
+            header { padding: 24px 2px 16px; }
+            header h1 { font-size: 22px; }
             main { padding: 20px; }
         }
+    
     </style>
 </head>
 <body>
+    <div class="keyline"></div>
     <div class="container">
         <header>
             <h1>Style Manual citation generator help</h1>
