@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Style Manual citation generator</title>
+    <title>AIHW citation generator</title>
     <link rel="icon" href="favicon.ico" sizes="48x48">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -83,6 +83,8 @@
         .input-with-button input { flex: 1; }
 
         .help-text { font-size: 13px; color: var(--c3); margin: 8px 0 0; line-height: 1.5; }
+        .tab-intro { font-size: 14px; color: var(--c2); margin: 0 0 16px; line-height: 1.55; background: #eef5f7; border-left: 3px solid var(--b4); padding: 12px 14px; border-radius: 6px; }
+        .tab-intro strong { color: var(--b2); }
         .help-text code, code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92em; background: var(--bg); padding: 1px 5px; border-radius: 4px; color: var(--b2); }
 
         /* ===== TABS ===== */
@@ -303,8 +305,8 @@
         <header>
             <div class="header-inner">
                 <div>
-                    <h1>Style Manual citation generator</h1>
-                    <p>Generate citations in the Australian Government Style Manual author&ndash;date format.</p>
+                    <h1>AIHW citation generator</h1>
+                    <p>Generate citations in the AIHW author&ndash;date referencing style.</p>
                 </div>
                 <a href="help.html" class="header-help-link">Help</a>
             </div>
@@ -346,6 +348,7 @@
                     <button class="source-type-btn" data-type="conferencepaper" role="radio" aria-checked="false" type="button">Conference paper</button>
                     <button class="source-type-btn" data-type="thesis" role="radio" aria-checked="false" type="button">Thesis</button>
                     <button class="source-type-btn" data-type="legislation" role="radio" aria-checked="false" type="button">Legislation</button>
+                    <button class="source-type-btn" data-type="meteor" role="radio" aria-checked="false" type="button">METEOR item</button>
                 </div>
                 <div id="url-notice" class="status" role="status" aria-live="polite"></div>
                 <div id="manual-form"></div>
@@ -354,6 +357,7 @@
 
             <!-- Tab 3: Link titles -->
             <div id="fix-panel" class="tab-panel">
+                <p class="tab-intro"><strong>For EndNote users.</strong> EndNote can't hyperlink reference titles itself, so its 'Australian Government author&ndash;date' output style puts each reference's URL at the end instead of linking the title. Paste a reference list produced by that style below and this tool moves each trailing URL into a hyperlink on the reference title &ndash; the AIHW style &ndash; so you no longer have to link them by hand.</p>
                 <label class="form-label" for="fix-input">Paste your reference list</label>
                 <div id="fix-input" contenteditable="true" role="textbox" aria-multiline="true"
                      data-placeholder="Paste your formatted AGSM references here (directly from Word). References with a raw URL at the end will have that URL hyperlinked into the title and removed from the end."></div>
@@ -393,7 +397,7 @@
 
             <!-- Footer -->
             <div class="footer-note">
-                <p>This tool generates citations following the <a href="https://www.stylemanual.gov.au/referencing-and-attribution/author-date" target="_blank" rel="noopener">Australian Government Style Manual author&ndash;date system</a>.</p>
+                <p>This tool generates citations following the AIHW referencing style, based on the <a href="https://www.stylemanual.gov.au/referencing-and-attribution/author-date" target="_blank" rel="noopener">Australian Government Style Manual author&ndash;date system</a>.</p>
                 <p>Always check generated citations for accuracy, especially for complex sources.</p>
                 <p>Found a bug or have a suggestion? <a href="https://forms.office.com/Pages/ResponsePage.aspx?id=CzcK22S1RUCEh5b_lwUSwHlJFHEe3VtHiDghW-pGfWpUNVRSVkVKWDkyOTdIWkVOTk5NSTFJMFpWTS4u" target="_blank" rel="noopener">Share your feedback</a></p>
 
@@ -528,6 +532,13 @@
               helpText: 'Cth, ACT, NSW, NT, Qld, SA, Tas, Vic or WA \u2014 omit if obvious from context' },
             { id: 'url', label: 'URL' },
         ],
+        meteor: [
+            { id: 'title', label: 'METEOR item name', required: true, sentenceCase: true, placeholder: 'e.g. Hospital service\u2014care type' },
+            { id: 'meteorId', label: 'METEOR ID', half: true, placeholder: 'e.g. 711010' },
+            { id: 'year', label: 'Year', half: true },
+            { id: 'url', label: 'URL' },
+            { id: 'accessDate', label: 'Access date', placeholder: 'e.g. 2 May 2024' },
+        ],
     };
 
     // ===== UTILITY FUNCTIONS =====
@@ -551,12 +562,15 @@
 
     /**
      * Format author list for reference list.
-     * All authors listed; commas between; 'and' before last (never '&').
+     * AIHW style: list the first 6 authors, then 'et al.' for the rest.
+     * (This differs from Style Manual, which lists all authors.)
+     * 6 or fewer: all listed; commas between; 'and' before last (never '&').
      */
     function formatAuthorList(authors) {
         if (!authors || authors.length === 0) return '';
         const names = authors.map(a => formatAuthorName(a.given, a.family));
         if (names.length === 1) return names[0];
+        if (names.length > 6) return names.slice(0, 6).join(', ') + ' et al.';
         if (names.length === 2) return `${names[0]} and ${names[1]}`;
         return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
     }
@@ -1833,6 +1847,36 @@
         return { html, plain, year, intext };
     }
 
+    /**
+     * METEOR item (AIHW Metadata Online Registry):
+     * Author (Year) <em>Item name</em> (METEOR ID NNNNNN), AIHW METEOR Metadata Online Registry website, accessed Day Month Year.
+     * The item name is italicised and hyperlinked; the METEOR ID sits outside the link.
+     */
+    function formatMeteor(data) {
+        const authors = data.authorDisplay;
+        const authorsInText = data.authorInText;
+        const year = data.year || 'n.d.';
+        const accessDate = data.accessDate || getTodayFormatted();
+
+        const linkedTitle = linkTitle(`<em>${data.title}</em>`, data);
+        let titlePart = linkedTitle;
+        if (data.meteorId) titlePart += ` (METEOR ID ${data.meteorId})`;
+
+        let parts = [];
+        parts.push(titlePart);
+        parts.push('AIHW METEOR Metadata Online Registry website');
+        parts.push(`accessed ${accessDate}`);
+
+        const body = parts.join(', ');
+        const html = `${authors} (${year}) ${body}.`;
+        const plain = html.replace(/<[^>]+>/g, '');
+
+        return {
+            html, plain, year,
+            intext: buildIntextOptions(authorsInText, year),
+        };
+    }
+
     function formatCitation(sourceType, rawData) {
         // Build the author display strings from the raw data
         const data = { ...rawData };
@@ -1857,6 +1901,7 @@
             case 'conferencepaper':  return formatConferencePaper(data);
             case 'thesis':           return formatThesis(data);
             case 'legislation':      return formatLegislation(data);
+            case 'meteor':           return formatMeteor(data);
             default:                 return formatBook(data);
         }
     }
@@ -2107,14 +2152,21 @@
 
         // Initialise author component
         // Govt reports default to Organisation mode (most common use case)
-        const defaultAuthorMode = prefillData?.authorMode || (['report', 'dataset'].includes(sourceType) ? 'organisation' : 'person');
+        const defaultAuthorMode = prefillData?.authorMode || (['report', 'dataset', 'meteor'].includes(sourceType) ? 'organisation' : 'person');
+        // METEOR items are always authored by the AIHW – pre-fill the org author.
+        let orgAbbrevDefault = prefillData?.orgAbbrev || '';
+        let orgFullDefault = prefillData?.orgFull || '';
+        if (sourceType === 'meteor' && !orgAbbrevDefault && !orgFullDefault) {
+            orgAbbrevDefault = 'AIHW';
+            orgFullDefault = 'Australian Institute of Health and Welfare';
+        }
         const authorOpts = {
             label: sourceType === 'chapter' ? 'Chapter author(s)' : 'Author(s)',
-            showOrgToggle: ['website', 'report', 'dataset', 'mediarelease'].includes(sourceType),
+            showOrgToggle: ['website', 'report', 'dataset', 'mediarelease', 'meteor'].includes(sourceType),
             defaultMode: defaultAuthorMode,
             persons: prefillData?.authors?.length ? prefillData.authors : [{ given: '', family: '' }],
-            orgAbbrev: prefillData?.orgAbbrev || '',
-            orgFull: prefillData?.orgFull || '',
+            orgAbbrev: orgAbbrevDefault,
+            orgFull: orgFullDefault,
         };
         if (sourceType !== 'legislation') {
             initAuthorComponent('ac-author', authorOpts);
@@ -2420,11 +2472,15 @@
         const from = formState[fromType];
         const seed = {};
 
-        // Copy author component state
-        if (from.authorMode !== undefined) seed.authorMode = from.authorMode;
-        if (from.authors)                  seed.authors    = from.authors;
-        if (from.orgAbbrev !== undefined)  seed.orgAbbrev  = from.orgAbbrev;
-        if (from.orgFull !== undefined)    seed.orgFull    = from.orgFull;
+        // Copy author component state.
+        // METEOR items are always AIHW-authored, so never seed another type's
+        // author into them (buildForm pre-fills AIHW instead).
+        if (toType !== 'meteor') {
+            if (from.authorMode !== undefined) seed.authorMode = from.authorMode;
+            if (from.authors)                  seed.authors    = from.authors;
+            if (from.orgAbbrev !== undefined)  seed.orgAbbrev  = from.orgAbbrev;
+            if (from.orgFull !== undefined)    seed.orgFull    = from.orgFull;
+        }
 
         // Copy field values whose id exists in the target type
         const toFieldIds = new Set(

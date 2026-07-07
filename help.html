@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Help – Style Manual citation generator</title>
+    <title>Help – AIHW citation generator</title>
     <link rel="icon" href="favicon.ico" sizes="48x48">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -77,7 +77,7 @@
     <div class="keyline"></div>
     <div class="container">
         <header>
-            <h1>Style Manual citation generator help</h1>
+            <h1>AIHW citation generator help</h1>
             <p>Got a question about the citation generator? Check here for answers first.</p>
             <p><a href="index.html">&larr; Back to the citation generator</a></p>
         </header>
@@ -156,7 +156,7 @@
                 <details>
                     <summary>How do I enter author names?</summary>
                     <div class="faq-answer">
-                        <p>Click <strong>+ Add author</strong> and fill in the given name(s) and family name in the separate fields. The tool formats the name to Style Manual conventions automatically (family name + initials, no full stops).</p>
+                        <p>Click <strong>+ Add author</strong> and fill in the given name(s) and family name in the separate fields. The tool formats the name to AIHW referencing conventions automatically (family name + initials, no full stops).</p>
                         <p>For a long author list, use <strong>Paste author list</strong>. Paste names separated by commas, semicolons, ampersands, or line breaks, in any order (e.g. 'Smith J, Jones A' or 'Jane Smith; Alex Jones'). The tool will strip credentials (PhD, MD and so on) and affiliation numbers.</p>
                     </div>
                 </details>
@@ -164,15 +164,24 @@
                 <details>
                     <summary>How do I cite a source where the author is an organisation?</summary>
                     <div class="faq-answer">
-                        <p>Select <strong>Organisation</strong> in the Author field toggle (available for Webpage, Govt report, Data set and Media release types). Enter the abbreviation and the full name in the 2 fields.</p>
+                        <p>Select <strong>Organisation</strong> in the Author field toggle (available for Webpage, Govt report, Data set, Media release and METEOR item types). Enter the abbreviation and the full name in the 2 fields.</p>
                         <p>If the organisation has no abbreviation, leave the abbreviation field blank and enter the full name only.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>The agency has been renamed – which name do I use?</summary>
+                    <div class="faq-answer">
+                        <p>Use the department or organisation name as it appeared on the source when it was published – in both the author and publisher positions. Do not update it to the agency's current name, even if the department has since been renamed or restructured and the page now sits under a new agency. Apply this to all formats, including PDFs and web pages.</p>
+                        <p>For example, a report published in 2022 by the Department of Health and Aged Care should be referenced under that name, even though the agency is now the Department of Health, Disability and Ageing.</p>
+                        <p>This most often affects <strong>Govt report</strong> and <strong>Media release</strong> citations, but applies to any organisation-authored source (including webpages). If the tool pre-fills a current agency name during a URL lookup, check it against the name shown on the source and correct it if needed. If you're unsure which name applied at the time, check the publication's front matter, header or footer, or the agency's annual report for that year.</p>
                     </div>
                 </details>
 
                 <details>
                     <summary>What is 'sentence case' and should I use it?</summary>
                     <div class="faq-answer">
-                        <p>The Style Manual requires titles in sentence case: only the first word and proper nouns are capitalised. If the title you've copied is in title case (Every Word Capitalised), click <strong>Convert to sentence case</strong> to apply the conversion automatically.</p>
+                        <p>The AIHW referencing style requires titles in sentence case: only the first word and proper nouns are capitalised. If the title you've copied is in title case (Every Word Capitalised), click <strong>Convert to sentence case</strong> to apply the conversion automatically.</p>
                         <p>The tool preserves ALL-CAPS acronyms (such as ABS, UNESCO, NDIS). Always review the result. Proper nouns such as place names and people's names won't be re-capitalised automatically and you may need to correct them manually.</p>
                     </div>
                 </details>
@@ -180,7 +189,7 @@
                 <details>
                     <summary>The citation shows 'n.d.' instead of a year – why?</summary>
                     <div class="faq-answer">
-                        <p>'n.d.' (no date) is the Style Manual convention when a publication year is not available. It appears when the Year field is left blank.</p>
+                        <p>'n.d.' (no date) is the AIHW referencing convention when a publication year is not available. It appears when the Year field is left blank.</p>
                         <p>If the source has a year, enter it in the Year field and regenerate the citation.</p>
                     </div>
                 </details>
@@ -234,9 +243,29 @@
                 </details>
             </div>
 
+            <div class="faq-section">
+                <h2>Link titles</h2>
+
+                <details id="link-titles">
+                    <summary>What is the 'Link titles' tab for?</summary>
+                    <div class="faq-answer">
+                        <p>It's for EndNote users. EndNote can't hyperlink a reference's title itself, so its 'Australian Government author&ndash;date' output style puts the URL at the end of each reference instead. Until now, authors had to select each title and add the hyperlink by hand.</p>
+                        <p>The <strong>Link titles</strong> tab does this automatically: paste a reference list produced by that output style and the tool moves each trailing URL into a hyperlink on the reference title &ndash; the AIHW style &ndash; and removes the raw URL from the end.</p>
+                    </div>
+                </details>
+
+                <details>
+                    <summary>How do I use it?</summary>
+                    <div class="faq-answer">
+                        <p>Copy your formatted reference list from Word and paste it into the box on the <strong>Link titles</strong> tab. Paste directly from Word so italics and any existing hyperlinks are preserved. Click <strong>Link titles</strong>, then use <strong>Copy all with formatting</strong> to copy the result back into your document.</p>
+                        <p>Only references that end in a raw URL are changed. DOIs (<code>doi:10.xxx/yyy</code>) and references that are already linked are left as they are.</p>
+                    </div>
+                </details>
+            </div>
+
             <!-- Footer -->
             <div class="footer-note">
-                <p>This tool generates citations following the <a href="https://www.stylemanual.gov.au/referencing-and-attribution/author-date" target="_blank" rel="noopener">Australian Government Style Manual author&ndash;date system</a>.</p>
+                <p>This tool generates citations following the AIHW referencing style, based on the <a href="https://www.stylemanual.gov.au/referencing-and-attribution/author-date" target="_blank" rel="noopener">Australian Government Style Manual author&ndash;date system</a>.</p>
                 <p>Always check generated citations for accuracy, especially for complex sources.</p>
             </div>
         </main>

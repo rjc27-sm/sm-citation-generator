@@ -1,11 +1,19 @@
-# SM Citation Generator – Project Memory
+# AIHW Citation Generator – Project Memory
 
 ## What this project is
-A web app that generates Australian Government Style Manual (AGSM) author–date citations. It has two tabs:
+A web app that generates **AIHW** author–date citations. The AIHW referencing style is based on the Australian Government Style Manual (AGSM) author–date system, with AIHW-specific variations (see "AIHW-specific rules" below). It has three tabs:
 - **Quick lookup** – paste a DOI, ISBN, or URL; the app fetches metadata and generates a citation automatically
 - **Manual entry** – select a source type and fill in a form
+- **Link titles** – for EndNote users: paste a reference list output by EndNote's 'Australian Government author–date' style and the tool hyperlinks each title with its trailing URL (which EndNote can't do natively)
 
 The app is hosted on GitHub Pages from the `master` branch; pushing to `master` deploys immediately.
+
+> **History:** This was formerly the "Style Manual citation generator". That Style Manual version now lives in the Proof Positive tool (Style Manual Check folder). This version has been rebranded to the **AIHW citation generator** and customised for AIHW referencing style.
+
+## AIHW-specific rules (differ from Style Manual)
+- **Reference list authors:** list the first **6 authors**, then `et al.` for the rest. Style Manual lists all authors. Encoded in `formatAuthorList()`. Applies to all source types (including books).
+- **METEOR items** are a dedicated source type (`meteor`), always AIHW-authored.
+- **Changed agency names:** cite the department/organisation name as it appeared on the source at publication time (both author and publisher positions), not the current name. This is guidance only (not auto-detectable); covered by a help FAQ entry.
 
 ---
 
@@ -55,6 +63,10 @@ Each type has:
 | `newspaper` | Newspaper | `formatNewspaper` | single quotes | full date | accessed date only if URL present |
 | `dataset` | Data set | `formatDataset` | italics | year | `[data set]` outside link; accessed date; supports 'Unpublished' |
 | `mediarelease` | Media release | `formatMediaRelease` | italics | full date | `[media release]` outside link; accessed date only if URL present |
+| `conferencepaper` | Conference paper | `formatConferencePaper` | single quotes | full date | `[conference presentation]` descriptor; supports 'Unpublished' (no accessed date when unpublished) |
+| `thesis` | Thesis | `formatThesis` | italics | year | `[type of thesis]` descriptor; accessed date; supports 'Unpublished' |
+| `legislation` | Legislation | `formatLegislation` | roman (ref list), italics (in-text) | year from title | No author component; `(Jurisdiction)` suffix; year parsed from the title |
+| `meteor` | METEOR item | `formatMeteor` | italics | year | Always AIHW-authored (org author pre-filled to AIHW); `(METEOR ID NNN)` outside link; fixed 'AIHW METEOR Metadata Online Registry website'; accessed date |
 
 ### Adding a new source type — checklist
 1. Add a `SOURCE_FIELDS` entry
@@ -102,17 +114,18 @@ State is stored in `authorComponents[containerId]`:
 ```
 
 **Key settings in `buildForm()`:**
-- `showOrgToggle`: `['website', 'report', 'dataset', 'mediarelease']` — these types show the person/org toggle
-- `defaultAuthorMode`: `'organisation'` for `report` and `dataset`; `'person'` for everything else
+- `showOrgToggle`: `['website', 'report', 'dataset', 'mediarelease', 'meteor']` — these types show the person/org toggle
+- `defaultAuthorMode`: `'organisation'` for `report`, `dataset` and `meteor`; `'person'` for everything else
+- **METEOR auto-fill:** for `meteor`, `buildForm()` pre-fills the org author to `AIHW` / `Australian Institute of Health and Welfare` when no org value is present. `seedFormState()` also skips seeding any author state into `meteor`, so another type's org (e.g. a report's `DVA`) can't leak in.
 
 **Organisation author format:**
 - With abbreviation: `ABBREV (Full Name)` in the reference list; `ABBREV` in-text
 - Without abbreviation: `Full Name` everywhere
 
-**Person author format (AGSM):**
+**Person author format:**
 - Family name + initials, no comma, no full stops: `Kelleher T`
-- Multiple authors: commas between, `and` before last (never `&`)
-- In-text: 1 author → family name; 2 → `Family and Family`; 3+ → `Family et al.`
+- Reference list (`formatAuthorList`): **AIHW rule — list the first 6 authors, then `et al.`** (7+ authors). For ≤6: commas between, `and` before last (never `&`). This differs from Style Manual, which lists all authors.
+- In-text (`formatAuthorsInText`): 1 author → family name; 2 → `Family and Family`; 3+ → `Family et al.`
 
 **Paste & parse:**
 - The 'Paste author list' `<details>` accepts comma, semicolon, ampersand, or newline-separated names in natural or reversed order
@@ -234,10 +247,11 @@ This renders as e.g. `White N and Jackson D (unpublished) Report title, ...`
 
 ## Help page (`help.html`)
 
-A separate FAQ page linked from the top-right corner of the app header. Organised into three accordion sections:
+A separate FAQ page linked from the top-right corner of the app header. Organised into four accordion sections:
 - **Quick lookup** — covers URL title fetch behaviour (including the three-strategy approach and Cloudflare), DOI/ISBN lookup failures
-- **Filling in the form** — author entry, org authors, sentence case, n.d., date formats
+- **Manual entry** — author entry, org authors, changed agency names, sentence case, n.d., date formats
 - **Copying and using citations** — copy modes, in-text citations, Word/Google Docs pasting
+- **Link titles** — what the Link titles tab is for (EndNote background) and how to use it (`#link-titles` anchor)
 
 Inline contextual nudges in the app link directly to anchors within `help.html` (e.g. `help.html#url-title`) so users land on the relevant open section. The `<details>` element for the linked section must have the matching `id` attribute so the anchor resolves correctly.
 
@@ -283,8 +297,8 @@ Clears the lookup input, `state.lookupData`, `state.lastResult`, all `formState`
 ## Things to watch out for
 
 - `element.dataset` (the DOM API for reading `data-*` attributes) appears throughout the JS event handlers — this is completely unrelated to the `dataset` citation type
-- The `fullDate` auto-formatter is a delegated blur listener that checks `id.endsWith('-fullDate')` — it applies automatically to any source type that has a `fullDate` field (currently `newspaper` and `mediarelease`)
+- The `fullDate` auto-formatter is a delegated blur listener that checks `id.endsWith('-fullDate')` — it applies automatically to any source type that has a `fullDate` field (currently `newspaper`, `mediarelease` and `conferencepaper`)
 - `TYPE_DISPLAY_NAMES` is currently only populated for the original six types; it is used in status messages during lookup — update it if adding new types that can be reached via the lookup tab
-- The `mapLookupToFormData()` switch only has cases for the original six types — the two newer types (`dataset`, `mediarelease`) cannot currently be reached via the Quick lookup tab
+- The `mapLookupToFormData()` switch only has cases for the original six types — the newer types (`dataset`, `mediarelease`, `conferencepaper`, `thesis`, `legislation`, `meteor`) cannot currently be reached via the Quick lookup tab
 - The `unpublished` checkbox disables the year field via a delegated `change` listener on `#manual-form` — this is wired up in the `DOMContentLoaded` block, not inline in the field HTML
 - Half-row field pairs must always use `wrapHalfRow()` — placing raw `buildFieldHtml` output directly into a `form-row` grid without a wrapper div causes the label and input to become separate grid cells
