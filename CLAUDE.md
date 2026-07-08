@@ -58,7 +58,7 @@ Each type has:
 | `journal` | Journal article | `formatJournalArticle` | single quotes | year | |
 | `book` | Book | `formatBook` | italics | year | |
 | `chapter` | Book chapter | `formatBookChapter` | single quotes | year | Has editor component |
-| `website` | Webpage | `formatWebsite` | italics (standalone) or single quotes (in series) | year | accessed date; optional `series` field switches to 'webpage in larger publication' format |
+| `website` | Webpage | `formatWebsite` | italics (standalone) or single quotes (in series) | year | accessed date; optional `series` field switches to 'webpage in larger publication' format; supports **archived sources** (Trove/Wayback) – see below |
 | `report` | Govt report | `formatReport` | italics | year | accessed date; repeats agency short name; supports 'Unpublished' |
 | `newspaper` | Newspaper | `formatNewspaper` | single quotes | full date | accessed date only if URL present |
 | `dataset` | Data set | `formatDataset` | italics | year | `[data set]` outside link; accessed date; supports 'Unpublished' |
@@ -85,7 +85,8 @@ Each type has:
 |---|---|---|
 | `id` | string | Field key; also becomes the HTML input ID suffix (`field-{type}-{id}`) |
 | `label` | string | Label shown in the form |
-| `type` | string | Omit for standard text input; `'checkbox'` renders a checkbox control |
+| `type` | string | Omit for standard text input; `'checkbox'` renders a checkbox control; `'select'` renders a dropdown (requires `options`) |
+| `options` | string[] | For `type: 'select'` only — the option values. An empty-string `''` option renders as a 'Select…' placeholder |
 | `required` | boolean | Adds ` *` to label |
 | `sentenceCase` | boolean | Shows the 'Convert to sentence case' button |
 | `half` | boolean | Field takes half the row width (pairs with the next `half` field) |
@@ -96,6 +97,8 @@ Each type has:
 Special marker: `{ id: '_editors', label: '__editors__' }` — tells `buildForm` to insert the editor author component at that position (used in `chapter`).
 
 **Checkbox fields:** `buildFieldHtml` detects `field.type === 'checkbox'` and renders a `<div class="checkbox-field">` containing the input and an inline label. `collectFormData` and `saveFormState` use `el.checked` (boolean) rather than `el.value` for checkbox elements.
+
+**Select fields:** `buildFieldHtml` detects `field.type === 'select'` and renders a `<select>` from `field.options` (the `''` option becomes a 'Select…' placeholder; the option matching the prefill value is `selected`). `collectFormData`/`saveFormState` treat it like a text field (`el.value`). Currently used only by the `archiveName` field on `website`.
 
 ---
 
@@ -225,6 +228,38 @@ This renders as e.g. `White N and Jackson D (unpublished) Report title, ...`
 
 ---
 
+## Archived sources (Trove / Wayback Machine)
+
+**Scope:** currently the **`website` type only.** Lets a user cite a page as captured by a web archive when the live original is gone. Output changes from:
+`... Site Name, accessed D Month YYYY.`
+to:
+`... Site Name, archived D Month YYYY, accessed D Month YYYY via <Archive Name>.`
+
+`archived <date>` is the **snapshot capture date** (from the archive URL's timestamp), **not** today. `accessed <date>` keeps its normal meaning (today/when completed).
+
+**Form fields (in `SOURCE_FIELDS.website`, after `url`):**
+- `isArchived` (checkbox) – 'This is an archived copy…'. Reveals the sub-fields.
+- `archiveName` (`type: 'select'`, options `['', 'Trove', 'Wayback Machine', 'Other']`)
+- `archiveNameOther` (text) – shown only when `archiveName === 'Other'`
+- `archivedDate` (text) – snapshot date; **not** auto-filled with today (unlike `accessDate`)
+
+**Show/hide:** `syncArchiveFields()` toggles the `formfield-website-*` wrapper divs based on the checkbox and dropdown. It is called at the end of `buildForm` (for `website`) and from the delegated `change` listener on `#manual-form` (which fires on the `isArchived` checkbox and `archiveName` select). This relies on `buildForm` giving every non-half field wrapper an `id="formfield-{type}-{id}"`.
+
+**URL parsing – `parseArchiveUrl(url)`** returns `{ archiveName, archivedDate, originalUrl }` or `null`. Matches `/(awa|web)/YYYYMMDDhhmmss[modifiers]/<original>`:
+- `/awa/` → Trove (`webarchive.nla.gov.au`); `/web/` → Wayback (`web.archive.org`), tolerating `id_`/`im_`-style modifiers.
+- `archivedDate` via `archiveTimestampToDate()` (parses the 14-digit `YYYYMMDDhhmmss` → `D Month YYYY`).
+- `originalUrl` is the live URL embedded after the timestamp.
+
+**Manual entry:** a delegated `input` listener on `#manual-form` calls `handleArchiveUrlDetection()` when the webpage URL field changes — pre-fills `archivedDate`, ticks `isArchived`, and selects the archive name **only if the user hasn't already chosen one**.
+
+**Quick lookup:** the URL branch of `handleSmartPaste()` calls `parseArchiveUrl(input)`. If it's an archive URL it: forces `suggestedType = 'website'`; runs `lookupGovAuOrg()` and the Style Manual override against the **`originalUrl`** (so the org/site resolves to the real site, not `web.archive.org`); adds `isArchived`/`archiveName`/`archivedDate` to the prefill; keeps the **archive URL** as `url` (the citation links to the snapshot); and fetches the title from the archive URL. A `archiveNotice` is appended to the status messages. Non-archive URLs are unaffected (`parseArchiveUrl` returns `null`).
+
+**Output (`formatWebsite`):** only when `data.isArchived` — pushes `archived <archivedDate>` after the website name (guarded on `archivedDate` being present) and appends ` via <archiveName>` to the accessed element (`archiveNameOther` used when `archiveName === 'Other'`). Live-source output is byte-identical to before.
+
+**Extending to other types (agreed, not yet built):** the natural candidates are the URL-bearing online types — **report, dataset, mediarelease, newspaper** (report highest-value). Out of scope: journal/book/chapter (DOI/print), legislation (own point-in-time versioning), meteor (AIHW's own registry). Extending means factoring the archive fields + the `archived/via` output out of `SOURCE_FIELDS.website`/`formatWebsite` into something shared, and relaxing the current 'archive ⇒ website' assumption in `handleSmartPaste` so an archived report URL maps to `report`.
+
+---
+
 ## `toSentenceCase(title)`
 
 - Lowercases all words except the first
@@ -297,7 +332,8 @@ Clears the lookup input, `state.lookupData`, `state.lastResult`, all `formState`
 ## Things to watch out for
 
 - `element.dataset` (the DOM API for reading `data-*` attributes) appears throughout the JS event handlers — this is completely unrelated to the `dataset` citation type
-- The `fullDate` auto-formatter is a delegated blur listener that checks `id.endsWith('-fullDate')` — it applies automatically to any source type that has a `fullDate` field (currently `newspaper`, `mediarelease` and `conferencepaper`)
+- The date auto-formatter is a delegated blur listener that checks `id.endsWith('-fullDate' | '-accessDate' | '-archivedDate')` — it applies automatically to any source type that has one of those fields
+- `buildForm` gives every **non-half** field wrapper an `id="formfield-{type}-{id}"` (half-row wrappers from `wrapHalfRow` do **not** get ids). `syncArchiveFields` relies on these ids to show/hide the archive sub-fields
 - `TYPE_DISPLAY_NAMES` is currently only populated for the original six types; it is used in status messages during lookup — update it if adding new types that can be reached via the lookup tab
 - The `mapLookupToFormData()` switch only has cases for the original six types — the newer types (`dataset`, `mediarelease`, `conferencepaper`, `thesis`, `legislation`, `meteor`) cannot currently be reached via the Quick lookup tab
 - The `unpublished` checkbox disables the year field via a delegated `change` listener on `#manual-form` — this is wired up in the `DOMContentLoaded` block, not inline in the field HTML
