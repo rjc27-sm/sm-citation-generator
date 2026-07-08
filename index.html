@@ -2892,7 +2892,8 @@
      * Returns { url: string|null }.
      */
     function extractTrailingUrl(textContent) {
-        const allUrls = [...textContent.matchAll(/https?:\/\/[^\s<>,"]+/gi)];
+        // Match full http(s):// URLs and bare www. URLs (no scheme).
+        const allUrls = [...textContent.matchAll(/(?:https?:\/\/|www\.)[^\s<>,"]+/gi)];
         if (allUrls.length === 0) return { url: null };
 
         const lastMatch = allUrls[allUrls.length - 1];
@@ -2901,7 +2902,11 @@
         // Treat doi.org links as DOIs — leave unchanged
         if (/^https?:\/\/(dx\.)?doi\.org\//i.test(rawUrl)) return { url: null };
 
-        return { url: rawUrl };
+        // Bare www. URLs have no scheme — prepend https:// so the <a href> is
+        // valid, but keep rawUrl (as written) for locating/removing it in the text.
+        const href = /^https?:\/\//i.test(rawUrl) ? rawUrl : 'https://' + rawUrl;
+
+        return { url: rawUrl, href };
     }
 
     /**
@@ -3195,11 +3200,11 @@
         ensureBookTitleItalic(div);
         ensureUnquotedTitleItalic(div);
 
-        const { url } = extractTrailingUrl(div.textContent);
+        const { url, href } = extractTrailingUrl(div.textContent);
         if (!url) return { html: div.innerHTML, changed: false, skipped: false };
 
         removeUrlFromBlock(div, url);
-        const linked = hyperlinkTitleInBlock(div, url);
+        const linked = hyperlinkTitleInBlock(div, href);
 
         return {
             html: div.innerHTML,
