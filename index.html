@@ -474,6 +474,10 @@
             { id: 'year', label: 'Year (or leave blank for n.d.)', half: true },
             { id: 'accessDate', label: 'Access date', half: true, placeholder: 'e.g. 20 January 2025' },
             { id: 'url', label: 'URL' },
+            { id: 'isArchived', label: 'This is an archived copy (e.g. Trove, Wayback Machine)', type: 'checkbox' },
+            { id: 'archiveName', label: 'Archive name', type: 'select', options: ['', 'Trove', 'Wayback Machine', 'Other'] },
+            { id: 'archiveNameOther', label: 'Archive name', placeholder: 'e.g. UK Web Archive' },
+            { id: 'archivedDate', label: 'Archived date', placeholder: 'e.g. 5 June 2020', helpText: 'The date the snapshot was captured – auto-filled from the archive URL where possible' },
         ],
         report: [
             { id: 'title', label: 'Report title', required: true, sentenceCase: true },
@@ -1619,7 +1623,14 @@
             parts.push(linkTitle(`<em>${data.title}</em>`, data));
         }
         if (data.websiteName) parts.push(formatWebsiteName(data.websiteName));
+        // Archived copy: 'archived <snapshot date>' before the accessed date,
+        // 'via <archive>' appended after it. Live sources are unaffected.
+        if (data.isArchived && data.archivedDate) parts.push(`archived ${data.archivedDate}`);
         parts.push(`accessed ${accessDate}`);
+        if (data.isArchived) {
+            const archiveName = data.archiveName === 'Other' ? data.archiveNameOther : data.archiveName;
+            if (archiveName) parts[parts.length - 1] += ` via ${archiveName}`;
+        }
 
         const body = parts.join(', ');
         const html = `${authors} (${year}) ${body}.`;
@@ -2140,7 +2151,7 @@
                     html += wrapHalfRow(halfBuffer);
                     halfBuffer = [];
                 }
-                html += `<div class="form-field">${fieldHtml}</div>`;
+                html += `<div class="form-field" id="formfield-${sourceType}-${field.id}">${fieldHtml}</div>`;
             }
         }
         // Flush remaining
@@ -2180,6 +2191,83 @@
                 persons: prefillData?.editors?.length ? prefillData.editors : [{ given: '', family: '' }],
             });
         }
+
+        // Webpage: set initial visibility of the archive sub-fields
+        if (sourceType === 'website') syncArchiveFields();
+    }
+
+    /**
+     * Show/hide the archived-copy sub-fields on the webpage form based on the
+     * 'archived copy' checkbox and the selected archive name.
+     */
+    function syncArchiveFields() {
+        if (state.sourceType !== 'website') return;
+        const chk = document.getElementById('field-website-isArchived');
+        const on = !!(chk && chk.checked);
+        const show = (id, visible) => {
+            const el = document.getElementById(`formfield-website-${id}`);
+            if (el) el.style.display = visible ? '' : 'none';
+        };
+        show('archiveName', on);
+        show('archivedDate', on);
+        const sel = document.getElementById('field-website-archiveName');
+        show('archiveNameOther', on && sel && sel.value === 'Other');
+    }
+
+    /**
+     * Parse a 14-digit web-archive timestamp (YYYYMMDDhhmmss) to 'D Month YYYY'.
+     * Returns '' if the timestamp is malformed.
+     */
+    function archiveTimestampToDate(ts) {
+        if (!/^\d{14}$/.test(ts)) return '';
+        const months = ['January','February','March','April','May','June',
+                        'July','August','September','October','November','December'];
+        const year = parseInt(ts.slice(0, 4), 10);
+        const month = parseInt(ts.slice(4, 6), 10);
+        const day = parseInt(ts.slice(6, 8), 10);
+        if (month < 1 || month > 12 || day < 1 || day > 31) return '';
+        return `${day} ${months[month - 1]} ${year}`;
+    }
+
+    /**
+     * Parse a web-archive URL. Returns { archiveName, archivedDate, originalUrl }
+     * or null if the URL is not a recognised Trove/Wayback snapshot.
+     *  - Trove (NLA):   /awa/YYYYMMDDhhmmss/http://original...
+     *  - Wayback:       /web/YYYYMMDDhhmmss[id_|im_...]/http://original...
+     * originalUrl is the live URL embedded after the timestamp (may be '').
+     */
+    function parseArchiveUrl(url) {
+        if (!url) return null;
+        const m = url.match(/\/(awa|web)\/(\d{14})[^\/]*\/?(.*)$/);
+        if (!m) return null;
+        return {
+            archiveName: m[1] === 'awa' ? 'Trove' : 'Wayback Machine',
+            archivedDate: archiveTimestampToDate(m[2]),
+            originalUrl: m[3] || '',
+        };
+    }
+
+    /**
+     * When a web-archive URL is entered on the webpage form, extract the snapshot
+     * timestamp and pre-fill the archived date, tick the 'archived copy' box, and
+     * auto-select the archive (Trove/Wayback) if the user hasn't chosen one.
+     */
+    function handleArchiveUrlDetection(url) {
+        const info = parseArchiveUrl(url);
+        if (!info) return;
+
+        if (info.archivedDate) {
+            const dateField = document.getElementById('field-website-archivedDate');
+            if (dateField) dateField.value = info.archivedDate;
+        }
+
+        const chk = document.getElementById('field-website-isArchived');
+        if (chk) chk.checked = true;
+
+        const nameSel = document.getElementById('field-website-archiveName');
+        if (nameSel && !nameSel.value) nameSel.value = info.archiveName;
+
+        syncArchiveFields();
     }
 
     function buildFieldHtml(field, sourceType, prefillData) {
@@ -2189,6 +2277,21 @@
                 <input type="checkbox" id="field-${sourceType}-${field.id}"${checked}>
                 <label for="field-${sourceType}-${field.id}">${field.label}</label>
             </div>`;
+        }
+
+        if (field.type === 'select') {
+            const current = prefillData ? (prefillData[field.id] || '') : '';
+            const req = field.required ? ' *' : '';
+            const helpTextHtml = field.helpText
+                ? `<p class="help-text">${field.helpText}</p>`
+                : '';
+            const options = (field.options || []).map(opt => {
+                const label = opt === '' ? 'Select…' : opt;
+                const sel = opt === current ? ' selected' : '';
+                return `<option value="${escAttr(opt)}"${sel}>${label}</option>`;
+            }).join('');
+            return `<label for="field-${sourceType}-${field.id}">${field.label}${req}</label>
+                <select id="field-${sourceType}-${field.id}">${options}</select>${helpTextHtml}`;
         }
 
         let value = prefillData ? (prefillData[field.id] || '') : '';
@@ -2548,12 +2651,19 @@
                 showStatus('Citation generated from ISBN. Review the details below and edit if needed.', 'success');
 
             } else if (inputType === 'url') {
-                // Pre-fill URL and access date, suggest source type
-                const suggestedType = suggestTypeFromURL(input);
+                // Detect a web-archive (Trove/Wayback) snapshot URL
+                const archiveInfo = parseArchiveUrl(input);
+                // For org/type detection, target the original site embedded in the
+                // archive URL rather than the archive host (web.archive.org etc.)
+                const lookupUrl = (archiveInfo && archiveInfo.originalUrl) ? archiveInfo.originalUrl : input;
+
+                // Archive fields currently exist only on the webpage type, so an
+                // archive URL always maps to 'website'
+                const suggestedType = archiveInfo ? 'website' : suggestTypeFromURL(input);
                 selectSourceType(suggestedType);
 
-                // Look up organisation from domain table
-                const orgMatch = lookupGovAuOrg(input);
+                // Look up organisation from domain table (using the original site)
+                const orgMatch = lookupGovAuOrg(lookupUrl);
 
                 const prefill = {
                     url: input,
@@ -2565,11 +2675,16 @@
                         orgAbbrev: orgMatch.abbrev,
                         websiteName: orgMatch.abbrev || orgMatch.full,
                     } : {}),
+                    ...(archiveInfo ? {
+                        isArchived: true,
+                        archiveName: archiveInfo.archiveName,
+                        archivedDate: archiveInfo.archivedDate,
+                    } : {}),
                 };
 
                 // Style Manual pages: override websiteName and pre-fill series
                 try {
-                    const smUrl = new URL(input);
+                    const smUrl = new URL(lookupUrl);
                     const smHostname = smUrl.hostname.toLowerCase().replace(/^www\./, '');
                     if (smHostname === 'stylemanual.gov.au' && smUrl.pathname !== '/' && smUrl.pathname !== '') {
                         prefill.websiteName = 'stylemanual.gov.au';
@@ -2585,6 +2700,9 @@
 
                 const displayType = TYPE_DISPLAY_NAMES[suggestedType] || suggestedType;
                 const orgNotice = orgMatch ? ` Organisation identified as \u2018${orgMatch.abbrev || orgMatch.full}\u2019.` : '';
+                const archiveNotice = archiveInfo
+                    ? ` Detected as an archived copy (${archiveInfo.archiveName})${archiveInfo.archivedDate ? `, snapshot ${archiveInfo.archivedDate}` : ''}.`
+                    : '';
 
                 // Set loading placeholder on the title field while fetching
                 const titleField = document.getElementById(`field-${suggestedType}-title`);
@@ -2593,7 +2711,7 @@
                 }
 
                 showUrlNotice(
-                    `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Trying to fetch page title\u2026`
+                    `URL detected.${orgNotice}${archiveNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Trying to fetch page title\u2026`
                 );
 
                 // Try to fetch the page title (best effort, fails gracefully)
@@ -2614,11 +2732,11 @@
                                 helpEl.innerHTML = 'Title inferred from URL \u2013 please verify. <a href="help.html#url-title" target="_blank">Why didn\u2019t it fetch the real title?</a>';
                             }
                             showUrlNotice(
-                                `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. A title has been inferred from the URL \u2013 please check and correct it if needed.`
+                                `URL detected.${orgNotice}${archiveNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. A title has been inferred from the URL \u2013 please check and correct it if needed.`
                             );
                         } else {
                             showUrlNotice(
-                                `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL, access date, and page title. Check if this is the appropriate type and review the pre-filled fields.`
+                                `URL detected.${orgNotice}${archiveNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL, access date, and page title. Check if this is the appropriate type and review the pre-filled fields.`
                             );
                         }
                     } else {
@@ -2634,7 +2752,7 @@
                             helpEl.innerHTML = 'Page title couldn\u2019t be retrieved automatically \u2013 <a href="help.html#url-title" target="_blank">why not?</a> Copy the title from the page and paste it in.';
                         }
                         showUrlNotice(
-                            `URL detected.${orgNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Check if this is the appropriate type and complete the remaining fields.`
+                            `URL detected.${orgNotice}${archiveNotice} We\u2019ve suggested \u2018${displayType}\u2019 as the source type and pre-filled the URL and access date. Check if this is the appropriate type and complete the remaining fields.`
                         );
                     }
                 });
@@ -3208,6 +3326,17 @@
                     if (yearField) yearField.disabled = e.target.checked;
                 }
             }
+            // Webpage archive fields: reveal/hide on checkbox tick or archive-name change
+            if (e.target.id === 'field-website-isArchived' || e.target.id === 'field-website-archiveName') {
+                syncArchiveFields();
+            }
+        });
+
+        // Webpage URL field — detect a web-archive URL and pre-fill archive details
+        document.getElementById('manual-form').addEventListener('input', (e) => {
+            if (e.target.id === 'field-website-url') {
+                handleArchiveUrlDetection(e.target.value);
+            }
         });
 
         // Generate citation button
@@ -3255,7 +3384,7 @@
         // Date auto-formatting: reformat on blur for fullDate and accessDate fields
         document.getElementById('manual-form').addEventListener('blur', (e) => {
             const id = e.target.id || '';
-            if (e.target.tagName === 'INPUT' && (id.endsWith('-fullDate') || id.endsWith('-accessDate'))) {
+            if (e.target.tagName === 'INPUT' && (id.endsWith('-fullDate') || id.endsWith('-accessDate') || id.endsWith('-archivedDate'))) {
                 const formatted = autoFormatDate(e.target.value);
                 if (formatted !== e.target.value) {
                     e.target.value = formatted;
