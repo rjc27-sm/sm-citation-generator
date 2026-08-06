@@ -1,0 +1,3 @@
+# Local dev-server config for Claude Code's preview tooling.
+# Not part of the app - GitHub Pages serves the static files directly.
+.claude/launch.json
