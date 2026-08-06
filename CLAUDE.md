@@ -4,7 +4,7 @@
 A web app that generates **AIHW** author–date citations. The AIHW referencing style is based on the Australian Government Style Manual (AGSM) author–date system, with AIHW-specific variations (see "AIHW-specific rules" below). It has three tabs:
 - **Quick lookup** – paste a DOI, ISBN, or URL; the app fetches metadata and generates a citation automatically
 - **Manual entry** – select a source type and fill in a form
-- **Link titles** – for EndNote users: paste a reference list output by EndNote's 'Australian Government author–date' style and the tool hyperlinks each title with its trailing URL (which EndNote can't do natively)
+- **Link titles** – for EndNote users: paste a reference list output by EndNote's 'Australian Government author–date' style and the tool hyperlinks each title with its trailing URL or DOI (which EndNote can't do natively)
 
 The app is hosted on GitHub Pages from the `master` branch; pushing to `master` deploys immediately.
 
@@ -205,7 +205,7 @@ All formatters return `{ html, plain, year, intext }`:
 |---|---|
 | `linkTitle(titleHtml, data)` | Wraps `titleHtml` in `<a href>` if DOI or URL present; DOI takes priority |
 | `formatWebsiteName(name)` | Appends ` website` if name doesn't already end with 'website' and isn't URL-style (no spaces + contains a dot — e.g. `aihw.gov.au`) |
-| `formatDOI(doi)` | Returns `doi:xxxxx` formatted as a hyperlink |
+| `formatDOI(doi)` | Returns the DOI as plain text in the form `doi:xxxxx` (not a link — the *title* carries the DOI hyperlink, via `linkTitle`) |
 | `formatEdition(n)` | `2` → `2nd edn`, `3` → `3rd edn`, etc. |
 | `formatPageRange(pages)` | Converts hyphens to en dashes in page ranges |
 | `buildIntextOptions(authorStr, year)` | Returns the two in-text forms |
@@ -257,6 +257,35 @@ to:
 **Output (`formatWebsite`):** only when `data.isArchived` — pushes `archived <archivedDate>` after the website name (guarded on `archivedDate` being present) and appends ` via <archiveName>` to the accessed element (`archiveNameOther` used when `archiveName === 'Other'`). Live-source output is byte-identical to before.
 
 **Extending to other types (agreed, not yet built):** the natural candidates are the URL-bearing online types — **report, dataset, mediarelease, newspaper** (report highest-value). Out of scope: journal/book/chapter (DOI/print), legislation (own point-in-time versioning), meteor (AIHW's own registry). Extending means factoring the archive fields + the `archived/via` output out of `SOURCE_FIELDS.website`/`formatWebsite` into something shared, and relaxing the current 'archive ⇒ website' assumption in `handleSmartPaste` so an archived report URL maps to `report`.
+
+---
+
+## Link titles tab
+
+Takes a reference list pasted from Word (EndNote 'Australian Government author–date' output) and hyperlinks each reference title, matching what the other two tabs produce.
+
+**Pipeline:** `cleanWordHtml` → `splitHtmlBlocks` → `processReferenceHtml` (per reference) → `renderFixResults`.
+
+`processReferenceHtml` does, in order:
+1. Normalise italics — `ensureJournalNameItalic`, `ensureBookTitleItalic`, `ensureUnquotedTitleItalic` (these run even for references with no URL or DOI)
+2. `extractTrailingUrl(text)` — last non-doi.org URL, or null
+3. `extractDoi(text)` — **last** DOI anywhere in the text, not just at the end (EndNote can output `doi:… . https://…`, i.e. URL after DOI)
+4. Remove the raw URL (`removeUrlFromBlock`); rewrite a doi.org URL to `doi:10.xxxx/yyy` (`rewriteDoiTextInBlock`)
+5. `hyperlinkTitleInBlock` with the DOI href if there is one, else the URL
+
+**URL vs DOI:** a raw URL is *removed* and folded into the title link; a DOI *stays visible* as plain `doi:10.xxxx/yyy` and the title links to `https://doi.org/<doi>`. Where a reference has both, the URL is removed and the DOI supplies the link — matching `linkTitle`'s DOI-over-URL priority in the citation formatters.
+
+**DOI parsing (`DOI_RE` / `extractDoi`):** matches both `doi:10.xxxx/yyy` and `https://doi.org/…` (and `dx.doi.org`). DOIs contain full stops (`10.1017/gmh.2023.3`), so only punctuation at the very end of the match is stripped as the reference's closing full stop.
+
+**Title detection (`findTitleSpan`)** returns `{ titleText, isQuoted, start, end }` where `start`/`end` are character offsets into the block's `textContent`. Callers use the offsets, never `indexOf(titleText)` — the title can appear more than once, and offsets are exact.
+
+Two traps this design exists to avoid:
+- **Possessive apostrophes.** In `'…consumers’ perspectives'` the `’` is a quote character followed by a space and looks exactly like a closing quote. The quoted branch therefore collects *all* candidate closing quotes and ranks them: quote-then-comma (the AGSM pattern) beats quote-then-full-stop/end, which beats quote-then-space.
+- **Titles spanning multiple text nodes.** A title containing its own italics (`'Prevalence of <em>E. coli</em> in water'`) can never be found by an `indexOf` on a single text node. `offsetToPosition` + `wrapRangeInLink` use a DOM `Range` so the link can wrap across element boundaries.
+
+`offsetToPosition(div, offset, preferNext)` — an offset on a text-node boundary is ambiguous (end of one node, start of the next). `preferNext: true` resolves to the following node, which is what the already-linked guard needs to see that a character actually sits inside an `<a>`. Without it, re-running the tool on its own output nests `<a>` tags.
+
+**Quoted titles never fall through** to the `<em>` branch of `hyperlinkTitleInBlock`: for a quoted title the first `<em>` is the journal or book name, and linking the wrong text is worse than leaving it for the user (the reference is flagged amber instead).
 
 ---
 

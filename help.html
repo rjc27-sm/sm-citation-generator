@@ -119,8 +119,7 @@
                 <details>
                     <summary>Why didn't the URL look up identify the organisation?</summary>
                     <div class="faq-answer">
-                        <p>The tool matches Australian state, territory and federal government agency URLs to a built-in list of several hundred agencies and their corresponding shortened forms. Pre-filling will not work if the agency's domain isn't in the list, or the URL belongs to a non-government website.</li>
-                        </ul>
+                        <p>The tool matches Australian state, territory and federal government agency URLs to a built-in list of several hundred agencies and their corresponding shortened forms. Pre-filling will not work if the agency's domain isn't in the list, or the URL belongs to a non-government website.</p>
                         <p>Switch to the <strong>Organisation</strong> mode in the author field and enter the abbreviation and full name manually.</p>
                     </div>
                 </details>
@@ -129,7 +128,7 @@
                     <summary>My DOI wasn't found – what should I do?</summary>
                     <div class="faq-answer">
                         <p>The tool looks up DOIs via CrossRef. If the item isn't indexed in CrossRef (common for some government publications and preprints), the look up will fail.</p>
-                        <p>Use the <strong>Manual entry</strong> tab and enter the details by hand. You can still include the DOI in the DOI field – it will be hyperlinked in the citation.</p>
+                        <p>Use the <strong>Manual entry</strong> tab and enter the details by hand. Still enter the DOI in the DOI field: the citation shows it as <code>doi:10.xxx/yyy</code> at the end and hyperlinks the title to it.</p>
                     </div>
                 </details>
 
@@ -194,6 +193,16 @@
                     </div>
                 </details>
 
+                <details id="archived-sources">
+                    <summary>How do I cite a page saved in Trove or the Wayback Machine?</summary>
+                    <div class="faq-answer">
+                        <p>Use the <strong>Webpage</strong> source type and tick <strong>This is an archived copy (e.g. Trove, Wayback Machine)</strong>. Choose the archive and enter the <strong>Archived date</strong> &ndash; the date the snapshot was captured, not the date you looked at it.</p>
+                        <p>Easier still, paste the archive URL into the <strong>URL</strong> field (or into <strong>Quick look up</strong>). The tool reads the capture date out of the URL, ticks the checkbox and selects the archive for you.</p>
+                        <p>The citation ends with both dates, for example: <code>&hellip; Australian Bureau of Statistics website, archived 5 June 2020, accessed 4 March 2025 via Trove.</code> The link goes to the archived snapshot, not the original page.</p>
+                        <p>Use this only when you need to cite the page as it was captured &ndash; for example when the live page has changed or been taken down. If the original page is still available and unchanged, cite that instead. Archived copies are supported for the <strong>Webpage</strong> type only.</p>
+                    </div>
+                </details>
+
                 <details>
                     <summary>How do I enter a date for a news article or media release?</summary>
                     <div class="faq-answer">
@@ -249,8 +258,8 @@
                 <details id="link-titles">
                     <summary>What is the 'Link titles' tab for?</summary>
                     <div class="faq-answer">
-                        <p>It's for EndNote users. EndNote can't hyperlink a reference's title itself, so its 'Australian Government author&ndash;date' output style puts the URL at the end of each reference instead. Until now, authors had to select each title and add the hyperlink by hand.</p>
-                        <p>The <strong>Link titles</strong> tab does this automatically: paste a reference list produced by that output style and the tool moves each trailing URL into a hyperlink on the reference title &ndash; the AIHW style &ndash; and removes the raw URL from the end.</p>
+                        <p>It's for EndNote users. EndNote can't hyperlink a reference's title itself, so its 'Australian Government author&ndash;date' output style puts the URL or DOI at the end of each reference instead. Until now, authors had to select each title and add the hyperlink by hand.</p>
+                        <p>The <strong>Link titles</strong> tab does this automatically: paste a reference list produced by that output style and the tool hyperlinks each reference title &ndash; the AIHW style. A raw URL is moved into the title and removed from the end. A DOI stays where it is, as plain <code>doi:10.xxx/yyy</code> text, and the title links to it &ndash; the same output the <strong>Quick look up</strong> tab produces for a journal article. Where a reference has both a URL and a DOI, the URL is removed and the title links to the DOI.</p>
                     </div>
                 </details>
 
@@ -258,7 +267,7 @@
                     <summary>How do I use it?</summary>
                     <div class="faq-answer">
                         <p>Copy your formatted reference list from Word and paste it into the box on the <strong>Link titles</strong> tab. Paste directly from Word so italics and any existing hyperlinks are preserved. Click <strong>Link titles</strong>, then use <strong>Copy all with formatting</strong> to copy the result back into your document.</p>
-                        <p>Only references that end in a raw URL are changed. DOIs (<code>doi:10.xxx/yyy</code>) and references that are already linked are left as they are.</p>
+                        <p>Only references that end in a raw URL or a DOI are changed. References with neither, and titles that are already hyperlinked, are left as they are.</p>
                     </div>
                 </details>
             </div>

@@ -357,11 +357,11 @@
 
             <!-- Tab 3: Link titles -->
             <div id="fix-panel" class="tab-panel">
-                <p class="tab-intro"><strong>For EndNote users.</strong> EndNote can't hyperlink reference titles itself, so its 'Australian Government author&ndash;date' output style puts each reference's URL at the end instead of linking the title. Paste a reference list produced by that style below and this tool moves each trailing URL into a hyperlink on the reference title &ndash; the AIHW style &ndash; so you no longer have to link them by hand.</p>
+                <p class="tab-intro"><strong>For EndNote users.</strong> EndNote can't hyperlink reference titles itself, so its 'Australian Government author&ndash;date' output style puts each reference's URL or DOI at the end instead of linking the title. Paste a reference list produced by that style below and this tool hyperlinks each reference title &ndash; the AIHW style &ndash; so you no longer have to link them by hand.</p>
                 <label class="form-label" for="fix-input">Paste your reference list</label>
                 <div id="fix-input" contenteditable="true" role="textbox" aria-multiline="true"
-                     data-placeholder="Paste your formatted AGSM references here (directly from Word). References with a raw URL at the end will have that URL hyperlinked into the title and removed from the end."></div>
-                <p class="help-text">Paste directly from Word to preserve italics and existing hyperlinks. DOIs (<code>doi:10.xxx/yyy</code>) are left unchanged.</p>
+                     data-placeholder="Paste your formatted AGSM references here (directly from Word). References ending in a URL or a DOI will have their title hyperlinked."></div>
+                <p class="help-text">Paste directly from Word to preserve italics and existing hyperlinks. Raw URLs are moved into the title and removed from the end. DOIs stay at the end as <code>doi:10.xxx/yyy</code> and the title links to them; where a reference has both, the DOI is used for the link.</p>
                 <div class="fix-actions">
                     <button class="btn btn-primary" id="fix-btn" type="button">Link titles</button>
                     <button class="copy-btn" id="fix-clear-btn" type="button">Clear</button>
@@ -2893,14 +2893,13 @@
      */
     function extractTrailingUrl(textContent) {
         // Match full http(s):// URLs and bare www. URLs (no scheme).
-        const allUrls = [...textContent.matchAll(/(?:https?:\/\/|www\.)[^\s<>,"]+/gi)];
+        const allUrls = [...textContent.matchAll(/(?:https?:\/\/|www\.)[^\s<>,"]+/gi)]
+            .map(m => m[0].replace(/[.,;)\]>]+$/, ''))
+            // doi.org links are handled as DOIs by extractDoi(), not as the reference's URL
+            .filter(u => !/^(?:https?:\/\/)?(?:dx\.)?doi\.org\//i.test(u));
         if (allUrls.length === 0) return { url: null };
 
-        const lastMatch = allUrls[allUrls.length - 1];
-        const rawUrl = lastMatch[0].replace(/[.,;)\]>]+$/, '');
-
-        // Treat doi.org links as DOIs — leave unchanged
-        if (/^https?:\/\/(dx\.)?doi\.org\//i.test(rawUrl)) return { url: null };
+        const rawUrl = allUrls[allUrls.length - 1];
 
         // Bare www. URLs have no scheme — prepend https:// so the <a href> is
         // valid, but keep rawUrl (as written) for locating/removing it in the text.
@@ -2909,9 +2908,39 @@
         return { url: rawUrl, href };
     }
 
+    // Both AGSM DOI forms: 'doi:10.xxxx/yyy' and 'https://doi.org/10.xxxx/yyy'.
+    const DOI_RE = /(?:doi:\s*|https?:\/\/(?:dx\.)?doi\.org\/)(10\.\d{4,9}\/[^\s<>"]+)/gi;
+
     /**
-     * Find the title span in plain text (used for quoted-title fallback).
-     * Returns { titleText, isQuoted } or null.
+     * Extract the DOI from plain text. The DOI is not always last (EndNote can put a
+     * URL after it), so match anywhere and take the last one.
+     * Returns { doi, raw, isUrlForm } or null.
+     *   doi       – bare DOI, e.g. '10.1186/s12889-024-18436-7'
+     *   raw       – the DOI as written, so it can be located in the DOM
+     *   isUrlForm – true when written as a doi.org URL, so it needs rewriting to 'doi:…'
+     */
+    function extractDoi(textContent) {
+        const matches = [...textContent.matchAll(DOI_RE)];
+        if (matches.length === 0) return null;
+        const m = matches[matches.length - 1];
+
+        // DOIs contain full stops (10.1017/gmh.2023.3), so only strip punctuation
+        // sitting at the very end — that's the reference's closing full stop.
+        const trailing = (m[1].match(/[.,;:)\]]+$/) || [''])[0];
+        const doi = m[1].slice(0, m[1].length - trailing.length);
+        if (!doi) return null;
+
+        return {
+            doi,
+            raw: m[0].slice(0, m[0].length - trailing.length),
+            isUrlForm: /^https?:/i.test(m[0])
+        };
+    }
+
+    /**
+     * Find the title span in plain text.
+     * Returns { titleText, isQuoted, start, end } or null, where start/end are
+     * character offsets into refText (end is exclusive).
      */
     function findTitleSpan(refText) {
         // Primary: (2023) or (2023a)
@@ -2945,28 +2974,34 @@
 
         if (isOpenQuote) {
             const titleStart = pos;
-            pos++;
-            while (pos < refText.length) {
-                const c = refText[pos];
-                if (c === "'" || c === '‘' || c === '’') {
-                    const next = refText[pos + 1];
-                    if (!next || next === ',' || next === '.' || next === ' ') {
-                        return {
-                            titleText: refText.slice(titleStart, pos + 1),
-                            isQuoted: true
-                        };
-                    }
-                }
-                pos++;
+            // A possessive apostrophe inside the title ('…consumers’ perspectives')
+            // looks exactly like a closing quote, so rank the candidates rather than
+            // taking the first: AGSM always follows a quoted title with a comma.
+            let commaEnd = -1, stopEnd = -1, spaceEnd = -1;
+            for (let i = titleStart + 1; i < refText.length; i++) {
+                const c = refText[i];
+                if (c !== "'" && c !== '‘' && c !== '’') continue;
+                const next = refText[i + 1];
+                if (next === ',') { if (commaEnd === -1) commaEnd = i; }
+                else if (!next || next === '.') { if (stopEnd === -1) stopEnd = i; }
+                else if (next === ' ') { if (spaceEnd === -1) spaceEnd = i; }
             }
-            return null;
+            const closeIdx = commaEnd !== -1 ? commaEnd : (stopEnd !== -1 ? stopEnd : spaceEnd);
+            if (closeIdx === -1) return null;
+            return {
+                titleText: refText.slice(titleStart, closeIdx + 1),
+                isQuoted: true,
+                start: titleStart,
+                end: closeIdx + 1
+            };
         } else {
             const titleStart = pos;
             // Stop at first comma or '[' (handles "[media release]" etc.)
             const endMatch = refText.slice(titleStart).search(/[,\[]/);
             const titleEnd = endMatch === -1 ? refText.length : titleStart + endMatch;
             if (titleEnd <= titleStart) return null;
-            return { titleText: refText.slice(titleStart, titleEnd).trimEnd(), isQuoted: false };
+            const titleText = refText.slice(titleStart, titleEnd).trimEnd();
+            return { titleText, isQuoted: false, start: titleStart, end: titleStart + titleText.length };
         }
     }
 
@@ -3023,30 +3058,95 @@
         }
     }
 
+    /**
+     * Rewrite a doi.org URL in the block to the AGSM short form 'doi:10.xxxx/yyy',
+     * matching Quick lookup output. Unwraps the <a> if Word auto-linked it.
+     */
+    function rewriteDoiTextInBlock(div, doiInfo) {
+        const shortForm = 'doi:' + doiInfo.doi;
+
+        // Case 1: the DOI URL sits inside an <a> (Word auto-links URLs)
+        for (const a of [...div.querySelectorAll('a')]) {
+            if (!a.textContent.includes(doiInfo.raw)) continue;
+            a.replaceWith(document.createTextNode(a.textContent.replace(doiInfo.raw, shortForm)));
+            return true;
+        }
+
+        // Case 2: plain text
+        const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+        let n;
+        while (n = walker.nextNode()) {
+            const idx = n.nodeValue.indexOf(doiInfo.raw);
+            if (idx === -1) continue;
+            n.nodeValue = n.nodeValue.slice(0, idx) + shortForm +
+                          n.nodeValue.slice(idx + doiInfo.raw.length);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Map a character offset in div.textContent to a { node, offset } DOM position.
+     * An offset on a node boundary is ambiguous — it is both the end of one text node
+     * and the start of the next. `preferNext` resolves it to the following node, which
+     * is what's needed to tell whether the character actually sits inside an element.
+     */
+    function offsetToPosition(div, charOffset, preferNext = false) {
+        const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+        let node, seen = 0, last = null;
+        while (node = walker.nextNode()) {
+            const len = node.nodeValue.length;
+            if (preferNext ? charOffset < seen + len : charOffset <= seen + len) {
+                return { node, offset: charOffset - seen };
+            }
+            seen += len;
+            last = node;
+        }
+        return last ? { node: last, offset: last.nodeValue.length } : null;
+    }
+
+    /**
+     * Wrap the character range [start, end) of div's text in a hyperlink, optionally
+     * inside <em>. Uses a Range so it works across element boundaries — a title
+     * containing its own italics (a species name, a ship) spans several text nodes,
+     * which a single-node indexOf search can never match.
+     */
+    function wrapRangeInLink(div, start, end, url, italic = false) {
+        const s = offsetToPosition(div, start);
+        const e = offsetToPosition(div, end);
+        if (!s || !e) return false;
+        try {
+            const range = document.createRange();
+            range.setStart(s.node, s.offset);
+            range.setEnd(e.node, e.offset);
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            if (italic) {
+                const em = document.createElement('em');
+                em.appendChild(range.extractContents());
+                a.appendChild(em);
+            } else {
+                a.appendChild(range.extractContents());
+            }
+            range.insertNode(a);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
     /** Add a hyperlink to the title within a DOM block. */
     function hyperlinkTitleInBlock(div, url) {
         const span = findTitleSpan(div.textContent);
 
         if (span && span.isQuoted) {
             // Quoted title ('Article title'): link only the inner text, keep quotes outside
-            const inner = span.titleText.slice(1, -1);
-            const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
-            let node;
-            while (node = walker.nextNode()) {
-                const idx = node.nodeValue.indexOf(span.titleText);
-                if (idx === -1) continue;
-                const before = node.nodeValue.slice(0, idx + 1); // keep opening quote
-                const after  = node.nodeValue.slice(idx + span.titleText.length - 1); // keep closing quote
-                const a = document.createElement('a');
-                a.href = url; a.target = '_blank'; a.rel = 'noopener';
-                a.appendChild(document.createTextNode(inner));
-                const parent = node.parentNode;
-                if (before) parent.insertBefore(document.createTextNode(before), node);
-                parent.insertBefore(a, node);
-                if (after) parent.insertBefore(document.createTextNode(after), node);
-                parent.removeChild(node);
-                return true;
-            }
+            const inner = offsetToPosition(div, span.start + 1, true);
+            // Already linked (e.g. re-running the tool on its own output) — leave it
+            if (inner && inner.node.parentElement && inner.node.parentElement.closest('a')) return true;
+            // Don't fall through to the <em> branch: for a quoted title that's the
+            // journal/book name, and linking the wrong text is worse than not linking.
+            return wrapRangeInLink(div, span.start + 1, span.end - 1, url);
         }
 
         // Unquoted title: first <em>/<i> not already inside an <a> (report/book/webpage)
@@ -3062,25 +3162,9 @@
         // Last resort: unquoted plain-text title (e.g. media release with no italics)
         // Wrap in <em> per AGSM: unquoted titles are italic.
         if (span) {
-            const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
-            let node;
-            while (node = walker.nextNode()) {
-                const idx = node.nodeValue.indexOf(span.titleText);
-                if (idx === -1) continue;
-                const before = node.nodeValue.slice(0, idx);
-                const after  = node.nodeValue.slice(idx + span.titleText.length);
-                const em = document.createElement('em');
-                em.textContent = span.titleText;
-                const a = document.createElement('a');
-                a.href = url; a.target = '_blank'; a.rel = 'noopener';
-                a.appendChild(em);
-                const parent = node.parentNode;
-                if (before) parent.insertBefore(document.createTextNode(before), node);
-                parent.insertBefore(a, node);
-                if (after) parent.insertBefore(document.createTextNode(after), node);
-                parent.removeChild(node);
-                return true;
-            }
+            const inner = offsetToPosition(div, span.start, true);
+            if (inner && inner.node.parentElement && inner.node.parentElement.closest('a')) return true;
+            if (wrapRangeInLink(div, span.start, span.end, url, true)) return true;
         }
 
         return false;
@@ -3121,9 +3205,7 @@
         const span = findTitleSpan(text);
         if (!span || !span.isQuoted) return false;
 
-        const titleIdx = text.indexOf(span.titleText);
-        if (titleIdx === -1) return false;
-        let pos = titleIdx + span.titleText.length;
+        let pos = span.end;
 
         // Skip ', '
         if (pos < text.length && text[pos] === ',') pos++;
@@ -3149,9 +3231,7 @@
         const span = findTitleSpan(text);
         if (!span || !span.isQuoted) return false;
 
-        const titleIdx = text.indexOf(span.titleText);
-        if (titleIdx === -1) return false;
-        let pos = titleIdx + span.titleText.length;
+        let pos = span.end;
 
         // Must be followed by ', in '
         const afterTitle = text.slice(pos);
@@ -3201,16 +3281,23 @@
         ensureUnquotedTitleItalic(div);
 
         const { url, href } = extractTrailingUrl(div.textContent);
-        if (!url) return { html: div.innerHTML, changed: false, skipped: false };
+        const doiInfo = extractDoi(div.textContent);
+        if (!url && !doiInfo) return { html: div.innerHTML, changed: false, skipped: false };
 
-        removeUrlFromBlock(div, url);
-        const linked = hyperlinkTitleInBlock(div, href);
+        // A raw URL always moves into the title; a DOI always stays visible at the end
+        // as plain 'doi:10.xxxx/yyy'. A reference can have both.
+        if (url) removeUrlFromBlock(div, url);
+        if (doiInfo && doiInfo.isUrlForm) rewriteDoiTextInBlock(div, doiInfo);
+
+        // DOI wins for the title link, matching Quick lookup's linkTitle().
+        const linkHref = doiInfo ? `https://doi.org/${doiInfo.doi}` : href;
+        const linked = hyperlinkTitleInBlock(div, linkHref);
 
         return {
             html: div.innerHTML,
             changed: true,
             skipped: !linked,
-            skipReason: linked ? '' : 'URL removed but title could not be located – please add hyperlink manually.'
+            skipReason: linked ? '' : 'Title could not be located – please add the hyperlink manually.'
         };
     }
 
@@ -3234,7 +3321,7 @@
         } else {
             summaryHtml = `<strong>${changedCount} of ${total}</strong> reference${changedCount !== 1 ? 's' : ''} updated.`;
             if (skippedCount > 0) {
-                summaryHtml += ` ${skippedCount} had URLs removed but title could not be auto-linked (shown with amber border).`;
+                summaryHtml += ` ${skippedCount} had a URL or DOI but the title could not be auto-linked (shown with amber border).`;
             }
         }
         document.getElementById('fix-summary').innerHTML = summaryHtml;
