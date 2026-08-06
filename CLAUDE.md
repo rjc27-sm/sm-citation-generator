@@ -2,7 +2,7 @@
 
 ## What this project is
 A web app that generates **AIHW** author–date citations. The AIHW referencing style is based on the Australian Government Style Manual (AGSM) author–date system, with AIHW-specific variations (see "AIHW-specific rules" below). It has three tabs:
-- **Quick lookup** – paste a DOI, ISBN, or URL; the app fetches metadata and generates a citation automatically
+- **Quick look up** – paste a DOI, ISBN, or URL; the app fetches metadata and generates a citation automatically
 - **Manual entry** – select a source type and fill in a form
 - **Link titles** – for EndNote users: paste a reference list output by EndNote's 'Australian Government author–date' style and the tool hyperlinks each title with its trailing URL or DOI (which EndNote can't do natively)
 
@@ -21,6 +21,7 @@ The app is hosted on GitHub Pages from the `master` branch; pushing to `master` 
 - Pure HTML/CSS/JS — no build step, no frameworks, no dependencies
 - Two files: `index.html` (the app) and `help.html` (FAQ page)
 - Deploy: `git push origin master` → live on GitHub Pages
+- `.claude/launch.json` is a local preview dev-server config, gitignored — the app is static and needs no server to run (opening `index.html` via `file://` works fine)
 
 ---
 
@@ -41,6 +42,7 @@ The app is hosted on GitHub Pages from the `master` branch; pushing to `master` 
 | `DATA COLLECTION` | `collectFormData`, `mapLookupToFormData`, `saveFormState`, `seedFormState` |
 | `DISPLAY & COPY` | `displayResult`, `copyPlainText`, `copyRichText` |
 | `SMART PASTE HANDLER` | `handleSmartPaste` — routes DOI/ISBN/URL to correct API |
+| `LINK TITLES` | Everything behind the Link titles tab — Word HTML cleanup, URL/DOI extraction, title detection and linking (see 'Link titles tab' below) |
 | `EVENT LISTENERS` | All wired up in a single `DOMContentLoaded` block at the bottom |
 
 ---
@@ -312,12 +314,16 @@ Two traps this design exists to avoid:
 ## Help page (`help.html`)
 
 A separate FAQ page linked from the top-right corner of the app header. Organised into four accordion sections:
-- **Quick lookup** — covers URL title fetch behaviour (including the three-strategy approach and Cloudflare), DOI/ISBN lookup failures
-- **Manual entry** — author entry, org authors, changed agency names, sentence case, n.d., date formats
+- **Quick look up** — covers URL title fetch behaviour (including the three-strategy approach and Cloudflare), DOI/ISBN lookup failures (`#url-title` anchor)
+- **Manual entry** — author entry, org authors, changed agency names, archived sources (`#archived-sources` anchor), sentence case, n.d., date formats
 - **Copying and using citations** — copy modes, in-text citations, Word/Google Docs pasting
 - **Link titles** — what the Link titles tab is for (EndNote background) and how to use it (`#link-titles` anchor)
 
 Inline contextual nudges in the app link directly to anchors within `help.html` (e.g. `help.html#url-title`) so users land on the relevant open section. The `<details>` element for the linked section must have the matching `id` attribute so the anchor resolves correctly.
+
+**Not yet covered by the FAQ** (all shipped, none documented): the `unpublished` checkbox, METEOR items, and legislation.
+
+When changing behaviour, check the FAQ for statements it makes false — the help page describes mechanics (how many title-fetch strategies, which types show the org toggle, what the DOI does) and drifts silently. Verify claims against the code rather than trusting them; a review in August 2026 found a stray `</li></ul>` closing a list that didn't exist, and an answer stating the DOI itself is hyperlinked when only the title is.
 
 ---
 
@@ -352,6 +358,7 @@ Clears the lookup input, `state.lookupData`, `state.lastResult`, all `formState`
 - **Punctuation:** en dashes (–) in all user-facing text; em dashes (—) may appear in code comments only
 - **Quotation marks:** single quotes in all user-facing text (labels, help text, FAQ copy); double quotes in HTML attributes and JS strings only
 - **'Data set'** is always two words in user-facing text (labels, citation output); the internal type key is `dataset` (one word)
+- **'Look up'** is two words as a verb in user-facing text, and the first tab is labelled **Quick look up**. 'Lookup' (one word) is for code identifiers and internal prose only — `handleSmartPaste`, `lookupGovAuOrg`, `mapLookupToFormData`. Easy to get wrong when writing help copy
 - **Date format:** `D Month YYYY` throughout (e.g. `4 January 2020`); no leading zero on day
 - **Year fallback:** blank year fields display as `n.d.`
 - **Accessed date:** auto-fills with today's date if the field is blank at generation time
