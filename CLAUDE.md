@@ -279,6 +279,8 @@ Takes a reference list pasted from Word (EndNote 'Australian Government author�
 
 **DOI parsing (`DOI_RE` / `extractDoi`):** matches both `doi:10.xxxx/yyy` and `https://doi.org/…` (and `dx.doi.org`). DOIs contain full stops (`10.1017/gmh.2023.3`), so only punctuation at the very end of the match is stripped as the reference's closing full stop.
 
+**Duplicate DOIs.** An EndNote record with the DOI in *both* the DOI field and the URL field outputs it twice: `…, doi:10.1071/AH18062. https://doi.org/10.1071/AH18062`. `extractDoi` normalises every match, keeps one copy — preferring the short `doi:` form over the URL form — and returns the others in `duplicates`, which `processReferenceHtml` deletes via `removeDuplicateDoiFromBlock` *before* `rewriteDoiTextInBlock` runs (so the rewrite's forward `indexOf` can only hit the survivor). Two *different* DOIs are not a duplication: the last one still wins and nothing is removed. Relatedly, `removeUrlFromBlock`'s catch-all trailing-URL pattern carries a `(?!(?:dx\.)?doi\.org\/)` lookahead so it can't eat a DOI URL that follows a real URL. A successful `rewriteDoiTextInBlock` is followed by `ensureTrailingPeriod` — the rewritten `doi:…` ends the reference, and an EndNote URL field has no full stop of its own to inherit.
+
 **Title detection (`findTitleSpan`)** returns `{ titleText, isQuoted, start, end }` where `start`/`end` are character offsets into the block's `textContent`. Callers use the offsets, never `indexOf(titleText)` — the title can appear more than once, and offsets are exact.
 
 Two traps this design exists to avoid:

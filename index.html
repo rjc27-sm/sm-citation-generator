@@ -2913,27 +2913,43 @@
 
     /**
      * Extract the DOI from plain text. The DOI is not always last (EndNote can put a
-     * URL after it), so match anywhere and take the last one.
-     * Returns { doi, raw, isUrlForm } or null.
-     *   doi       – bare DOI, e.g. '10.1186/s12889-024-18436-7'
-     *   raw       – the DOI as written, so it can be located in the DOM
-     *   isUrlForm – true when written as a doi.org URL, so it needs rewriting to 'doi:…'
+     * URL after it), so match anywhere and pick from all the matches.
+     * Returns { doi, raw, isUrlForm, duplicates } or null.
+     *   doi        – bare DOI, e.g. '10.1186/s12889-024-18436-7'
+     *   raw        – the DOI as written, so it can be located in the DOM
+     *   isUrlForm  – true when written as a doi.org URL, so it needs rewriting to 'doi:…'
+     *   duplicates – raw forms of any further copies of the same DOI, to be deleted
      */
     function extractDoi(textContent) {
         const matches = [...textContent.matchAll(DOI_RE)];
         if (matches.length === 0) return null;
-        const m = matches[matches.length - 1];
 
         // DOIs contain full stops (10.1017/gmh.2023.3), so only strip punctuation
         // sitting at the very end — that's the reference's closing full stop.
-        const trailing = (m[1].match(/[.,;:)\]]+$/) || [''])[0];
-        const doi = m[1].slice(0, m[1].length - trailing.length);
-        if (!doi) return null;
+        const occurrences = matches.map(m => {
+            const trailing = (m[1].match(/[.,;:)\]]+$/) || [''])[0];
+            return {
+                doi: m[1].slice(0, m[1].length - trailing.length),
+                raw: m[0].slice(0, m[0].length - trailing.length),
+                isUrlForm: /^https?:/i.test(m[0])
+            };
+        }).filter(o => o.doi);
+        if (occurrences.length === 0) return null;
+
+        // EndNote prints the DOI twice when a user has it in both the DOI and the URL
+        // field ('… doi:10.1071/AH18062. https://doi.org/10.1071/AH18062'). Keep one
+        // copy — preferring the short 'doi:' form, which is already AGSM style and sits
+        // where the citation formatters put it — and delete the rest. Two *different*
+        // DOIs are not a duplication, so the last one still wins and nothing is removed.
+        const last = occurrences[occurrences.length - 1];
+        const sameDoi = occurrences.filter(o => o.doi.toLowerCase() === last.doi.toLowerCase());
+        const kept = sameDoi.find(o => !o.isUrlForm) || sameDoi[0];
 
         return {
-            doi,
-            raw: m[0].slice(0, m[0].length - trailing.length),
-            isUrlForm: /^https?:/i.test(m[0])
+            doi: kept.doi,
+            raw: kept.raw,
+            isUrlForm: kept.isUrlForm,
+            duplicates: sameDoi.filter(o => o !== kept).map(o => o.raw)
         };
     }
 
@@ -3040,7 +3056,9 @@
                 tn.nodeValue = t
                     .replace(/,?\s*<https?:\/\/[^>]+>\s*\.?$/, '')
                     .replace(new RegExp(',?\\s*' + escapedUrl + '[.,;)]*\\s*\\.?$'), '')
-                    .replace(/,?\s*https?:\/\/\S+\s*\.?$/, '')
+                    // Catch-all for a trailing URL in a form the two patterns above
+                    // missed — but never a doi.org URL, which the DOI handling owns
+                    .replace(/,?\s*https?:\/\/(?!(?:dx\.)?doi\.org\/)\S+\s*\.?$/, '')
                     .trimEnd();
                 ensureTrailingPeriod(div);
                 return;
@@ -3080,6 +3098,54 @@
             if (idx === -1) continue;
             n.nodeValue = n.nodeValue.slice(0, idx) + shortForm +
                           n.nodeValue.slice(idx + doiInfo.raw.length);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Delete a repeated copy of the DOI from the block, leaving one visible.
+     * EndNote emits the DOI twice when a user has it in both the DOI and URL fields.
+     */
+    function removeDuplicateDoiFromBlock(div, raw) {
+        const escaped = escRegex(raw);
+
+        // Case 1: the duplicate sits inside an <a> (Word auto-links URLs)
+        for (const a of [...div.querySelectorAll('a')].reverse()) {
+            const href = (a.getAttribute('href') || '').replace(/[.,;)]+$/, '');
+            const text = a.textContent.trim().replace(/^[<\s]+|[>.\s]+$/g, '');
+            if (href === raw || text === raw) {
+                const prev = a.previousSibling;
+                if (prev && prev.nodeType === Node.TEXT_NODE) {
+                    prev.nodeValue = prev.nodeValue.replace(/[,;\s]*[<]?\s*$/, '');
+                }
+                const next = a.nextSibling;
+                if (next && next.nodeType === Node.TEXT_NODE) {
+                    next.nodeValue = next.nodeValue.replace(/^[>).,;\s]*/, '');
+                }
+                a.remove();
+                ensureTrailingPeriod(div);
+                return true;
+            }
+        }
+
+        // Case 2: plain text. Walk in reverse so the last copy goes first — both
+        // copies can sit in the same text node.
+        const walker = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        let n; while (n = walker.nextNode()) nodes.push(n);
+        for (let i = nodes.length - 1; i >= 0; i--) {
+            const tn = nodes[i];
+            if (!tn.nodeValue.includes(raw)) continue;
+
+            // At the end of the node: take the separator before it and any punctuation
+            // after it too, and let ensureTrailingPeriod restore the closing full stop.
+            const atEnd = new RegExp('[,;\\s]*[<]?\\s*' + escaped + '[>]?[.,;:)\\]]*\\s*$');
+            tn.nodeValue = atEnd.test(tn.nodeValue)
+                ? tn.nodeValue.replace(atEnd, '').trimEnd()
+                : tn.nodeValue.replace(new RegExp('\\s*' + escaped + '[.,;:]*'), '')
+                              .replace(/\s{2,}/g, ' ');
+            ensureTrailingPeriod(div);
             return true;
         }
         return false;
@@ -3287,7 +3353,15 @@
         // A raw URL always moves into the title; a DOI always stays visible at the end
         // as plain 'doi:10.xxxx/yyy'. A reference can have both.
         if (url) removeUrlFromBlock(div, url);
-        if (doiInfo && doiInfo.isUrlForm) rewriteDoiTextInBlock(div, doiInfo);
+        // Delete repeated copies first, so the rewrite below can only land on the survivor
+        if (doiInfo && doiInfo.duplicates.length) {
+            doiInfo.duplicates.forEach(dup => removeDuplicateDoiFromBlock(div, dup));
+        }
+        // The rewritten 'doi:…' becomes the last thing in the reference, so close it
+        // off — an EndNote URL field has no full stop of its own to inherit.
+        if (doiInfo && doiInfo.isUrlForm && rewriteDoiTextInBlock(div, doiInfo)) {
+            ensureTrailingPeriod(div);
+        }
 
         // DOI wins for the title link, matching Quick lookup's linkTitle().
         const linkHref = doiInfo ? `https://doi.org/${doiInfo.doi}` : href;
